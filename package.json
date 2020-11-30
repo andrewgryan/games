@@ -1,0 +1,27 @@
+{
+  "name": "games",
+  "version": "1.0.0",
+  "description": "Practice implementing simple game programming techniques",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrewgryan/games.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/andrewgryan/games/issues"
+  },
+  "homepage": "https://github.com/andrewgryan/games#readme",
+  "engines": {
+    "node": "14.x"
+  },
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
