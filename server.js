@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 // Web socket
 app.ws("/ws", (ws, req) => {
     ws.on("message", msg => {
-        app.getWss().clients.forEach((client) => {
+        expressWs.getWss().clients.forEach((client) => {
             client.send(msg)
         })
 
