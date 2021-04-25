@@ -19,7 +19,7 @@
 
             // Connect Elm to/from WebSocket
             console.log("attempt to connect to websocket")
-            let endpoint = "./ws" // "wss://echo.websocket.org"
+            let endpoint = "wss://sheltered-basin-70535.herokuapp.com/ws" // "wss://echo.websocket.org"
             let socket = new WebSocket(endpoint)
             app.ports.sendMessage.subscribe((message) => {
                 socket.send(message)
