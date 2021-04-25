@@ -78,7 +78,7 @@ update msg model =
                         Ack message ->
                             ( { model | messages = model.messages ++ [ message ] }, Cmd.none )
 
-                        Bad _ ->
+                        Nack _ ->
                             ( { model | status = Closed }, Cmd.none )
 
                 Err error ->
@@ -94,14 +94,14 @@ update msg model =
 
 type PortMessage
     = Ack String
-    | Bad String
+    | Nack String
 
 
 portDecoder : D.Decoder PortMessage
 portDecoder =
     D.oneOf
         [ D.field "data" D.string |> D.andThen (\s -> D.succeed (Ack s))
-        , D.field "error" D.string |> D.andThen (\s -> D.succeed (Bad s))
+        , D.field "error" D.string |> D.andThen (\s -> D.succeed (Nack s))
         ]
 
 

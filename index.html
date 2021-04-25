@@ -24,6 +24,11 @@
             app.ports.sendMessage.subscribe((message) => {
                 socket.send(message)
             })
+            socket.onopen = () => {
+                app.ports.messageReceiver.send({
+                    data: "Socket open"
+                })
+            }
             socket.addEventListener("message", (ev) => {
                 app.ports.messageReceiver.send({
                     data: ev.data
