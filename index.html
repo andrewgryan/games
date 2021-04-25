@@ -25,10 +25,15 @@
                 socket.send(message)
             })
             socket.addEventListener("message", (ev) => {
-                app.ports.messageReceiver.send(ev.data)
+                app.ports.messageReceiver.send({
+                    data: ev.data
+                })
             })
             socket.onclose = () => {
                 console.log("lost websocket connection")
+                app.ports.messageReceiver.send({
+                    error: ev.data
+                })
             }
         </script>
     </body>
