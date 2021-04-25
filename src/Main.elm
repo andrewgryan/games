@@ -7,7 +7,9 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, text)
+import Html exposing (Html, button, div, text)
+import Html.Attributes exposing (attribute)
+import Html.Events exposing (onClick)
 
 
 type alias Model =
@@ -15,7 +17,8 @@ type alias Model =
 
 
 type Msg
-    = NoOp
+    = Increment
+    | Decrement
 
 
 
@@ -33,7 +36,12 @@ init =
 
 update : Msg -> Model -> Model
 update msg model =
-    model
+    case msg of
+        Increment ->
+            model + 1
+
+        Decrement ->
+            model - 1
 
 
 
@@ -42,7 +50,19 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    text "Hello, World!"
+    div []
+        [ div [] [ text ("Count: " ++ String.fromInt model) ]
+        , button
+            [ onClick Decrement
+            , attribute "type" "button"
+            ]
+            [ text "-" ]
+        , button
+            [ onClick Increment
+            , attribute "type" "button"
+            ]
+            [ text "+" ]
+        ]
 
 
 main =
