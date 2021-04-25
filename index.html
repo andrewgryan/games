@@ -27,6 +27,9 @@
             socket.addEventListener("message", (ev) => {
                 app.ports.messageReceiver.send(ev.data)
             })
+            socket.onclose = () => {
+                console.log("lost websocket connection")
+            }
         </script>
     </body>
 </html>
