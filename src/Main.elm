@@ -77,7 +77,12 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Send ->
-            ( { model | draft = "" }, sendMessage model.draft )
+            case model.user of
+                Anonymous ->
+                    ( { model | draft = "" }, sendMessage model.draft )
+
+                LoggedIn name ->
+                    ( { model | draft = "" }, sendMessage (name ++ " : " ++ model.draft) )
 
         DraftChanged str ->
             ( { model | draft = str }, Cmd.none )
