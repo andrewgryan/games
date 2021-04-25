@@ -16,6 +16,16 @@
             const app = Elm.Main.init({
                 node: document.getElementById("root")
             })
+
+            // Connect Elm to/from WebSocket
+            console.log("attempt to connect to websocket")
+            let socket = new WebSocket("wss://echo.websocket.org")
+            app.ports.sendMessage.subscribe((message) => {
+                socket.send(message)
+            })
+            socket.addEventListener("message", (ev) => {
+                app.ports.messageReceiver.send(ev.data)
+            })
         </script>
     </body>
 </html>
