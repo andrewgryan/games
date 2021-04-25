@@ -19,11 +19,18 @@ import Json.Encode exposing (Value)
 
 
 type alias Model =
-    { draft : String
+    { user : User
+    , userDraft : String
+    , draft : String
     , messages : List String
     , status : Status
     , errorMessage : Maybe D.Error
     }
+
+
+type User
+    = Anonymous
+    | LoggedIn String
 
 
 
@@ -35,6 +42,8 @@ type Msg
     | DraftChanged String
     | Recv Value
     | WebSocket Status
+    | UserSend
+    | UserDraftChanged String
 
 
 type Status
@@ -53,6 +62,8 @@ init flags =
       , messages = []
       , status = NotStarted
       , errorMessage = Nothing
+      , user = Anonymous
+      , userDraft = ""
       }
     , Cmd.none
     )
@@ -86,6 +97,13 @@ update msg model =
 
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
+
+        -- USER
+        UserSend ->
+            ( { model | userDraft = "", user = LoggedIn model.userDraft }, Cmd.none )
+
+        UserDraftChanged str ->
+            ( { model | userDraft = str }, Cmd.none )
 
 
 
@@ -125,7 +143,31 @@ view model =
             []
         , button [ onClick Send ] [ text "Send" ]
         , viewStatus model.status
+
+        -- USER Login
+        , viewUser model.user model.userDraft
         ]
+
+
+viewUser : User -> String -> Html Msg
+viewUser user draftName =
+    case user of
+        Anonymous ->
+            div []
+                [ div [] [ text "Not signed in" ]
+                , input
+                    [ type_ "text"
+                    , placeholder "Draft"
+                    , onInput UserDraftChanged
+                    , on "keydown" (ifIsEnter UserSend)
+                    , value draftName
+                    ]
+                    []
+                , button [ onClick UserSend ] [ text "Send" ]
+                ]
+
+        LoggedIn str ->
+            div [] [ text ("Signed in as: " ++ str) ]
 
 
 viewStatus : Status -> Html Msg
