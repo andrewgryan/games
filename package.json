@@ -23,7 +23,9 @@
     "node": "14.x"
   },
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "express-ws": "^4.0.0",
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "elm": "^0.19.1-3"
