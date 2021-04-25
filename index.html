@@ -29,7 +29,7 @@
                     data: ev.data
                 })
             })
-            socket.onclose = () => {
+            socket.onclose = (ev) => {
                 console.log("lost websocket connection")
                 app.ports.messageReceiver.send({
                     error: ev.data
