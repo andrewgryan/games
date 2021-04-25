@@ -5,7 +5,7 @@ const app = express()
 const port = process.env.PORT || 8080
 
 // Enable websockets
-enableWs(app)
+let instance = enableWs(app)
 
 
 app.use(express.static(__dirname + "/static"))
@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 // Web socket
 app.ws("/ws", (ws, req) => {
     ws.on("message", msg => {
-        enableWs.getWss().clients.forEach((client) => {
+        instance.getWss("/ws").clients.forEach((client) => {
             client.send(msg)
         })
 
