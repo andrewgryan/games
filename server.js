@@ -19,7 +19,11 @@ app.get("/", (req, res) => {
 // Web socket
 app.ws("/ws", (ws, req) => {
     ws.on("message", msg => {
-        ws.send(msg)
+        ws.getWss().clients.forEach((client) => {
+            client.send(msg)
+        })
+
+        // ws.send(msg)
     })
     ws.on("close", () => {
         console.log("websocket connection closed")
