@@ -150,7 +150,7 @@ view model =
         , viewStatus model.status
 
         -- USER Login
-        , viewUser model.user model.userDraft
+        -- , viewUser model.user model.userDraft
         ]
 
 
