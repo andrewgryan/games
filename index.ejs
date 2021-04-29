@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
-        <title>App</title>
+        <title><%= title %></title>
         <link rel="stylesheet" href="css/base.css" type="text/css" media="all">
         <link rel="stylesheet" href="css/Board.css" type="text/css" media="all">
         <link rel="stylesheet" href="css/Card.css" type="text/css" media="all">
@@ -19,8 +19,7 @@
 
             // Connect Elm to/from WebSocket
             console.log("attempt to connect to websocket")
-            let endpoint = "wss://sheltered-basin-70535.herokuapp.com/ws" // "wss://echo.websocket.org"
-            let socket = new WebSocket(endpoint)
+            let socket = new WebSocket('<%= endpoint %>')
             app.ports.sendMessage.subscribe((message) => {
                 socket.send(message)
             })
@@ -30,6 +29,7 @@
                 })
             }
             socket.addEventListener("message", (ev) => {
+                console.log(ev.data)
                 app.ports.messageReceiver.send({
                     data: ev.data
                 })
