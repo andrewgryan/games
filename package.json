@@ -23,12 +23,12 @@
     "node": "14.x"
   },
   "dependencies": {
+    "ejs": "^3.1.6",
     "express": "^4.17.1",
     "express-ws": "^4.0.0",
     "ws": "^7.4.5"
   },
   "devDependencies": {
-    "ejs": "^3.1.6",
     "elm": "^0.19.1-3"
   }
 }
