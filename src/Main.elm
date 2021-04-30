@@ -33,7 +33,6 @@ type alias Model =
     , status : Status
     , errorMessage : Maybe D.Error
     , quiz : Quiz
-    , selectedAnswer : Maybe Answer
     }
 
 
@@ -94,7 +93,6 @@ init flags =
       , errorMessage = Nothing
       , user = Anonymous
       , userDraft = ""
-      , selectedAnswer = Nothing
       , quiz =
             Quiz
                 []
