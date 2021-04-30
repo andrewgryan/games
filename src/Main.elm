@@ -70,6 +70,7 @@ type Msg
     | WebSocket Status
     | UserSend
     | UserDraftChanged String
+      -- QUIZ
     | NextQuestion
     | PreviousQuestion
     | SelectAnswer Answer
@@ -279,23 +280,37 @@ viewStatus status =
 
 
 viewQuiz : Quiz -> Html Msg
-viewQuiz (Quiz _ question _) =
-    viewQuestion question
+viewQuiz (Quiz _ question remaining) =
+    case remaining of
+        [] ->
+            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+                [ viewQuestion question
+
+                -- Navigation buttons
+                , div [ class "flex justify-end" ]
+                    [ previousButton
+                    ]
+                ]
+
+        _ ->
+            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+                [ viewQuestion question
+
+                -- Navigation buttons
+                , viewButtons
+                ]
 
 
 viewQuestion : Question -> Html Msg
 viewQuestion question =
     case question of
         Question statement answers ->
-            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+            div []
                 [ -- Question
                   viewStatement statement
 
                 -- Answers
                 , ul [] (List.map viewAnswer answers)
-
-                -- Navigation buttons
-                , viewButtons
                 ]
 
         Answered statement answers answer ->
@@ -305,9 +320,6 @@ viewQuestion question =
 
                 -- Answers
                 , ul [] (List.map (viewAnswered answer) answers)
-
-                -- Navigation buttons
-                , viewButtons
                 ]
 
 
@@ -319,17 +331,27 @@ viewStatement statement =
 viewButtons : Html Msg
 viewButtons =
     div [ class "flex justify-end" ]
-        [ button
-            [ class "bg-white border border-blue-500 hover:bg-blue-700 text-near-black py-2 px-4 rounded mx-2 my-2"
-            , onClick PreviousQuestion
-            ]
-            [ text "Go back" ]
-        , button
-            [ class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
-            , onClick NextQuestion
-            ]
-            [ text "Next" ]
+        [ previousButton
+        , nextButton
         ]
+
+
+previousButton : Html Msg
+previousButton =
+    button
+        [ class "bg-white border border-blue-500 hover:bg-blue-700 text-near-black py-2 px-4 rounded mx-2 my-2"
+        , onClick PreviousQuestion
+        ]
+        [ text "Go back" ]
+
+
+nextButton : Html Msg
+nextButton =
+    button
+        [ class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
+        , onClick NextQuestion
+        ]
+        [ text "Next" ]
 
 
 viewAnswer : Answer -> Html Msg
