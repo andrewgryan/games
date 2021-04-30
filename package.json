@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "build": "elm make src/Main.elm --output static/index.js"
+    "build": "elm make src/Main.elm --output static/index.js",
+    "watch": "chokidar \"**/*.elm\" -c 'elm make src/Main.elm --output static/index.js' --initial"
   },
   "repository": {
     "type": "git",
@@ -26,9 +27,11 @@
     "ejs": "^3.1.6",
     "express": "^4.17.1",
     "express-ws": "^4.0.0",
+    "tailwindcss": "^2.1.2",
     "ws": "^7.4.5"
   },
   "devDependencies": {
+    "chokidar-cli": "^2.1.0",
     "elm": "^0.19.1-3"
   }
 }

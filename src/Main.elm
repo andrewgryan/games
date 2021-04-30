@@ -8,7 +8,14 @@ port module Main exposing (main, portDecoder)
 
 import Browser
 import Html exposing (Html, button, div, h1, input, li, text, ul)
-import Html.Attributes exposing (attribute, placeholder, type_, value)
+import Html.Attributes
+    exposing
+        ( attribute
+        , class
+        , placeholder
+        , type_
+        , value
+        )
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode exposing (Value)
@@ -25,12 +32,32 @@ type alias Model =
     , messages : List String
     , status : Status
     , errorMessage : Maybe D.Error
+    , quiz : Quiz
+    , selectedAnswer : Maybe Answer
     }
 
 
 type User
     = Anonymous
     | LoggedIn String
+
+
+
+-- QUIZ
+
+
+type Quiz
+    = Quiz (List Question) Question (List Question)
+
+
+type Question
+    = Question String (List Answer)
+    | Answered String (List Answer) Answer
+
+
+type Answer
+    = Right String
+    | Wrong String
 
 
 
@@ -44,6 +71,9 @@ type Msg
     | WebSocket Status
     | UserSend
     | UserDraftChanged String
+    | NextQuestion
+    | PreviousQuestion
+    | SelectAnswer Answer
 
 
 type Status
@@ -64,6 +94,26 @@ init flags =
       , errorMessage = Nothing
       , user = Anonymous
       , userDraft = ""
+      , selectedAnswer = Nothing
+      , quiz =
+            Quiz
+                []
+                (Question "How many pennies in a shilling?"
+                    [ Right "12"
+                    , Wrong "24"
+                    , Wrong "1/2"
+                    ]
+                )
+                [ Question "Who invented dynamite?"
+                    [ Right "Alfred Nobel"
+                    , Wrong "Thomas Edison"
+                    , Wrong "Isambard Kingdom Brunel"
+                    ]
+                , Question "Do you want to exit Netflix?"
+                    [ Right "Yes"
+                    , Wrong "No"
+                    ]
+                ]
       }
     , Cmd.none
     )
@@ -79,7 +129,7 @@ update msg model =
         Send ->
             case model.user of
                 Anonymous ->
-                    ( { model | draft = "" }, sendMessage model.draft )
+                    ( { model | draft = "" }, sendMessage (portEncoder (StoreUser model.draft)) )
 
                 LoggedIn name ->
                     ( { model | draft = "" }, sendMessage (name ++ " : " ++ model.draft) )
@@ -110,6 +160,46 @@ update msg model =
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
 
+        -- QUIZ
+        NextQuestion ->
+            case model.quiz of
+                Quiz previous current next ->
+                    case next of
+                        [] ->
+                            ( model, Cmd.none )
+
+                        question :: remaining ->
+                            ( { model | quiz = Quiz (current :: previous) question remaining }, Cmd.none )
+
+        PreviousQuestion ->
+            case model.quiz of
+                Quiz previous current next ->
+                    case previous of
+                        [] ->
+                            ( model, Cmd.none )
+
+                        question :: remaining ->
+                            ( { model | quiz = Quiz remaining question (current :: next) }, Cmd.none )
+
+        SelectAnswer answer ->
+            case model.quiz of
+                Quiz previous question next ->
+                    let
+                        quiz =
+                            Quiz previous (updateQuestion question answer) next
+                    in
+                    ( { model | quiz = quiz }, Cmd.none )
+
+
+updateQuestion : Question -> Answer -> Question
+updateQuestion question answer =
+    case question of
+        Question statement answers ->
+            Answered statement answers answer
+
+        Answered statement answers _ ->
+            Answered statement answers answer
+
 
 
 -- PORT DECODER
@@ -128,6 +218,22 @@ portDecoder =
         ]
 
 
+type Outgoing
+    = StoreUser String
+
+
+portEncoder : Outgoing -> String
+portEncoder outgoing =
+    case outgoing of
+        StoreUser user ->
+            Json.Encode.encode 0
+                (Json.Encode.object
+                    [ ( "type", Json.Encode.string "localStorage" )
+                    , ( "payload", Json.Encode.string user )
+                    ]
+                )
+
+
 
 -- VIEW
 
@@ -135,19 +241,8 @@ portDecoder =
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "Echo Chat" ]
-        , ul []
-            (List.map (\msg -> li [] [ text msg ]) model.messages)
-        , input
-            [ type_ "text"
-            , placeholder "Draft"
-            , onInput DraftChanged
-            , on "keydown" (ifIsEnter Send)
-            , value model.draft
-            ]
-            []
-        , button [ onClick Send ] [ text "Send" ]
-        , viewStatus model.status
+        [ -- QUIZ
+          viewQuiz model.quiz
 
         -- USER Login
         -- , viewUser model.user model.userDraft
@@ -183,6 +278,101 @@ viewStatus status =
 
         _ ->
             div [] []
+
+
+viewQuiz : Quiz -> Html Msg
+viewQuiz (Quiz _ question _) =
+    viewQuestion question
+
+
+viewQuestion : Question -> Html Msg
+viewQuestion question =
+    case question of
+        Question statement answers ->
+            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+                [ -- Question
+                  viewStatement statement
+
+                -- Answers
+                , ul [] (List.map viewAnswer answers)
+
+                -- Navigation buttons
+                , viewButtons
+                ]
+
+        Answered statement answers answer ->
+            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+                [ -- Question
+                  viewStatement statement
+
+                -- Answers
+                , ul [] (List.map (viewAnswered answer) answers)
+
+                -- Navigation buttons
+                , viewButtons
+                ]
+
+
+viewStatement : String -> Html Msg
+viewStatement statement =
+    div [ class "p-2 font-bold" ] [ text statement ]
+
+
+viewButtons : Html Msg
+viewButtons =
+    div [ class "flex justify-end" ]
+        [ button
+            [ class "bg-white border border-blue-500 hover:bg-blue-700 text-near-black py-2 px-4 rounded mx-2 my-2"
+            , onClick PreviousQuestion
+            ]
+            [ text "Go back" ]
+        , button
+            [ class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
+            , onClick NextQuestion
+            ]
+            [ text "Next" ]
+        ]
+
+
+viewAnswer : Answer -> Html Msg
+viewAnswer answer =
+    li
+        [ styleAnswer False
+        , onClick (SelectAnswer answer)
+        ]
+        [ text (answerToString answer) ]
+
+
+viewAnswered : Answer -> Answer -> Html Msg
+viewAnswered selected answer =
+    li
+        [ styleAnswer (selected == answer)
+        , onClick (SelectAnswer answer)
+        ]
+        [ text (answerToString answer) ]
+
+
+styleAnswer : Bool -> Html.Attribute Msg
+styleAnswer selected =
+    let
+        common =
+            "px-4 hover:text-white hover:bg-blue-500 cursor-pointer"
+    in
+    if selected then
+        class ("font-bold " ++ common)
+
+    else
+        class common
+
+
+answerToString : Answer -> String
+answerToString answer =
+    case answer of
+        Right str ->
+            str
+
+        Wrong str ->
+            str
 
 
 
