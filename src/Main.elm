@@ -33,6 +33,8 @@ type alias Model =
     , status : Status
     , errorMessage : Maybe D.Error
     , quiz : Quiz
+    , game : Game
+    , leaderBoard : LeaderBoard
     }
 
 
@@ -43,6 +45,12 @@ type User
 
 
 -- QUIZ
+
+
+type Game
+    = WaitingToPlay
+    | Playing
+    | ViewingResults
 
 
 type Quiz
@@ -57,6 +65,14 @@ type Question
 type Answer
     = Right String
     | Wrong String
+
+
+type LeaderBoard
+    = LeaderBoard (List Score)
+
+
+type Score
+    = Score String Int
 
 
 
@@ -94,6 +110,8 @@ init flags =
       , errorMessage = Nothing
       , user = Anonymous
       , userDraft = ""
+      , game = WaitingToPlay
+      , leaderBoard = LeaderBoard []
       , quiz =
             Quiz
                 []
@@ -239,13 +257,23 @@ portEncoder outgoing =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ -- QUIZ
-          viewQuiz model.quiz
+    case model.game of
+        WaitingToPlay ->
+            div [] [ text "Waiting to play" ]
 
-        -- USER Login
-        -- , viewUser model.user model.userDraft
-        ]
+        Playing ->
+            div []
+                [ -- QUIZ
+                  viewQuiz model.quiz
+                ]
+
+        ViewingResults ->
+            viewLeaderBoard model.leaderBoard
+
+
+viewLeaderBoard : LeaderBoard -> Html Msg
+viewLeaderBoard leaderBoard =
+    div [] [ text "Viewing Leader Board" ]
 
 
 viewUser : User -> String -> Html Msg
