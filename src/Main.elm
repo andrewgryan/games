@@ -7,7 +7,7 @@
 port module Main exposing (main, portDecoder)
 
 import Browser
-import Html exposing (Html, button, div, h1, input, li, text, ul)
+import Html exposing (Html, button, div, h1, input, label, li, text, ul)
 import Html.Attributes
     exposing
         ( attribute
@@ -72,7 +72,7 @@ type LeaderBoard
 
 
 type Score
-    = Score String Int
+    = Score User Int
 
 
 
@@ -87,8 +87,10 @@ type Msg
     | UserSend
     | UserDraftChanged String
       -- QUIZ
+    | StartQuiz
     | NextQuestion
     | PreviousQuestion
+    | FinishQuiz
     | SelectAnswer Answer
 
 
@@ -178,6 +180,30 @@ update msg model =
             ( { model | userDraft = str }, Cmd.none )
 
         -- QUIZ
+        StartQuiz ->
+            ( { model
+                | game = Playing
+                , user = LoggedIn model.userDraft
+              }
+            , Cmd.none
+            )
+
+        FinishQuiz ->
+            let
+                score =
+                    model.quiz
+                        |> allQuestions
+                        |> List.map toScore
+                        |> computeScore
+            in
+            ( { model
+                | game = ViewingResults
+                , leaderBoard = LeaderBoard [ Score model.user score ]
+              }
+            , -- TODO Send results to server
+              Cmd.none
+            )
+
         NextQuestion ->
             case model.quiz of
                 Quiz previous current next ->
@@ -216,6 +242,33 @@ updateQuestion question answer =
 
         Answered statement answers _ ->
             Answered statement answers answer
+
+
+allQuestions : Quiz -> List Question
+allQuestions quiz =
+    case quiz of
+        Quiz previous current next ->
+            previous ++ [ current ] ++ next
+
+
+toScore : Question -> Int
+toScore question =
+    case question of
+        Answered _ _ answer ->
+            case answer of
+                Right _ ->
+                    1
+
+                Wrong _ ->
+                    0
+
+        Question _ _ ->
+            0
+
+
+computeScore : List Int -> Int
+computeScore scores =
+    List.foldr (+) 0 scores
 
 
 
@@ -259,7 +312,7 @@ view : Model -> Html Msg
 view model =
     case model.game of
         WaitingToPlay ->
-            div [] [ text "Waiting to play" ]
+            viewStartPage model.userDraft
 
         Playing ->
             div []
@@ -271,9 +324,64 @@ view model =
             viewLeaderBoard model.leaderBoard
 
 
+viewStartPage : String -> Html Msg
+viewStartPage draftName =
+    div
+        [ class "w-full max-w-xs"
+        ]
+        [ div
+            [ class "bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+            ]
+            [ div
+                [ class "mb-4"
+                ]
+                [ label
+                    [ class "block text-gray-700 text-sm font-bold mb-2"
+                    ]
+                    [ text "Enter name:" ]
+                , input
+                    [ type_ "text"
+                    , placeholder "Write here"
+                    , onInput UserDraftChanged
+                    , on "keydown" (ifIsEnter StartQuiz)
+                    , value draftName
+                    , class "shadow appearence-none border rounded-w-full py-2 px-3"
+                    ]
+                    []
+                ]
+            , button
+                [ onClick StartQuiz
+                , primaryButtonStyle
+                ]
+                [ text "Start Quiz!" ]
+            ]
+        ]
+
+
 viewLeaderBoard : LeaderBoard -> Html Msg
 viewLeaderBoard leaderBoard =
-    div [] [ text "Viewing Leader Board" ]
+    case leaderBoard of
+        LeaderBoard scores ->
+            div [] (List.map viewScore scores)
+
+
+viewScore : Score -> Html Msg
+viewScore score =
+    case score of
+        Score user tally ->
+            div []
+                [ text (toString user ++ ": " ++ String.fromInt tally)
+                ]
+
+
+toString : User -> String
+toString user =
+    case user of
+        Anonymous ->
+            "Anonymous"
+
+        LoggedIn str ->
+            str
 
 
 viewUser : User -> String -> Html Msg
@@ -307,26 +415,47 @@ viewStatus status =
             div [] []
 
 
+quizContainerStyle : Html.Attribute Msg
+quizContainerStyle =
+    class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100"
+
+
 viewQuiz : Quiz -> Html Msg
-viewQuiz (Quiz _ question remaining) =
-    case remaining of
+viewQuiz (Quiz previous question remaining) =
+    case previous of
         [] ->
-            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+            div [ quizContainerStyle ]
                 [ viewQuestion question
 
                 -- Navigation buttons
                 , div [ class "flex justify-end" ]
-                    [ previousButton
+                    [ nextButton
                     ]
                 ]
 
         _ ->
-            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
-                [ viewQuestion question
+            case remaining of
+                [] ->
+                    div [ quizContainerStyle ]
+                        [ viewQuestion question
 
-                -- Navigation buttons
-                , viewButtons
-                ]
+                        -- Navigation buttons
+                        , div [ class "flex justify-end" ]
+                            [ previousButton
+                            , finishButton
+                            ]
+                        ]
+
+                _ ->
+                    div [ quizContainerStyle ]
+                        [ viewQuestion question
+
+                        -- Navigation buttons
+                        , div [ class "flex justify-end" ]
+                            [ previousButton
+                            , nextButton
+                            ]
+                        ]
 
 
 viewQuestion : Question -> Html Msg
@@ -342,7 +471,7 @@ viewQuestion question =
                 ]
 
         Answered statement answers answer ->
-            div [ class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100" ]
+            div []
                 [ -- Question
                   viewStatement statement
 
@@ -356,12 +485,9 @@ viewStatement statement =
     div [ class "p-2 font-bold" ] [ text statement ]
 
 
-viewButtons : Html Msg
-viewButtons =
-    div [ class "flex justify-end" ]
-        [ previousButton
-        , nextButton
-        ]
+primaryButtonStyle : Html.Attribute Msg
+primaryButtonStyle =
+    class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
 
 
 previousButton : Html Msg
@@ -376,10 +502,19 @@ previousButton =
 nextButton : Html Msg
 nextButton =
     button
-        [ class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
+        [ primaryButtonStyle
         , onClick NextQuestion
         ]
         [ text "Next" ]
+
+
+finishButton : Html Msg
+finishButton =
+    button
+        [ primaryButtonStyle
+        , onClick FinishQuiz
+        ]
+        [ text "Finish" ]
 
 
 viewAnswer : Answer -> Html Msg
