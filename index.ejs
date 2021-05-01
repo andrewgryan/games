@@ -18,18 +18,19 @@
             console.log("attempt to connect to websocket")
             let socket = new WebSocket('<%= endpoint %>')
             app.ports.sendMessage.subscribe((message) => {
+                console.log("SEND TO SERVER", message)
                 socket.send(message)
             })
             socket.onopen = () => {
+                /**
                 app.ports.messageReceiver.send({
                     data: "Socket open"
                 })
+                */
             }
             socket.addEventListener("message", (ev) => {
-                console.log(ev.data)
-                app.ports.messageReceiver.send({
-                    data: ev.data
-                })
+                console.log("RECV FROM SERVER", ev.data)
+                app.ports.messageReceiver.send(JSON.parse(ev.data))
             })
             socket.onclose = () => {
                 console.log("lost websocket connection")

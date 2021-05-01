@@ -7,7 +7,7 @@ const port = process.env.PORT || 8080
 // Enable websockets
 let instance = expressWs(app)
 
-let history = []
+let leaderboard = []
 
 app.use(express.static(__dirname + "/static"))
 
@@ -33,15 +33,17 @@ app.get("/", (req, res) => {
 // Web socket
 app.ws("/ws", (ws, req) => {
     console.log("websocket connection open")
-    history.forEach(msg => {
-        ws.send(msg)
-    })
+    ws.send(JSON.stringify(leaderboard))
 
     ws.on("message", msg => {
-        history.push(msg)
         console.log("websocket message ", msg)
+        let { payload } = JSON.parse(msg)
+        console.log("websocket message ", payload)
+
+        leaderboard.push(payload)
+
         instance.getWss("/ws").clients.forEach((client) => {
-            client.send(msg)
+            client.send(JSON.stringify(leaderboard))
         })
 
         // ws.send(msg)

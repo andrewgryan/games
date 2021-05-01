@@ -7,7 +7,19 @@
 port module Main exposing (main, portDecoder)
 
 import Browser
-import Html exposing (Html, button, div, h1, input, label, li, text, ul)
+import Html
+    exposing
+        ( Html
+        , button
+        , div
+        , h1
+        , input
+        , label
+        , li
+        , span
+        , text
+        , ul
+        )
 import Html.Attributes
     exposing
         ( attribute
@@ -80,10 +92,10 @@ type Score
 
 
 type Msg
-    = Send
-    | DraftChanged String
+    = DraftChanged String
     | Recv Value
     | WebSocket Status
+      -- USER
     | UserSend
     | UserDraftChanged String
       -- QUIZ
@@ -113,7 +125,8 @@ init flags =
       , user = Anonymous
       , userDraft = ""
       , game = WaitingToPlay
-      , leaderBoard = LeaderBoard []
+      , leaderBoard =
+            LeaderBoard []
       , quiz =
             Quiz
                 []
@@ -127,6 +140,16 @@ init flags =
                     [ Right "Alfred Nobel"
                     , Wrong "Thomas Edison"
                     , Wrong "Isambard Kingdom Brunel"
+                    ]
+                , Question "What is the capital of Australia?"
+                    [ Wrong "Sydney"
+                    , Wrong "Melbourne"
+                    , Right "Canberra"
+                    ]
+                , Question "What is the largest island in the Meditteranean?"
+                    [ Wrong "Corsica"
+                    , Right "Sicily"
+                    , Wrong "Cyprus"
                     ]
                 , Question "Do you want to exit Netflix?"
                     [ Right "Yes"
@@ -145,26 +168,13 @@ init flags =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Send ->
-            case model.user of
-                Anonymous ->
-                    ( { model | draft = "" }, sendMessage (portEncoder (StoreUser model.draft)) )
-
-                LoggedIn name ->
-                    ( { model | draft = "" }, sendMessage (name ++ " : " ++ model.draft) )
-
         DraftChanged str ->
             ( { model | draft = str }, Cmd.none )
 
         Recv value ->
             case D.decodeValue portDecoder value of
-                Ok portMessage ->
-                    case portMessage of
-                        Ack message ->
-                            ( { model | messages = model.messages ++ [ message ] }, Cmd.none )
-
-                        Nack _ ->
-                            ( { model | status = Closed }, Cmd.none )
+                Ok leaderBoard ->
+                    ( { model | leaderBoard = leaderBoard }, Cmd.none )
 
                 Err error ->
                     ( { model | errorMessage = Just error }, Cmd.none )
@@ -174,7 +184,12 @@ update msg model =
 
         -- USER
         UserSend ->
-            ( { model | userDraft = "", user = LoggedIn model.userDraft }, Cmd.none )
+            ( { model
+                | userDraft = ""
+                , user = LoggedIn model.userDraft
+              }
+            , Cmd.none
+            )
 
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
@@ -190,18 +205,25 @@ update msg model =
 
         FinishQuiz ->
             let
-                score =
+                tally =
                     model.quiz
                         |> allQuestions
                         |> List.map toScore
                         |> computeScore
+
+                score =
+                    Score model.user tally
+
+                cmd =
+                    SaveScore score
+                        |> portEncoder
+                        |> sendMessage
             in
             ( { model
                 | game = ViewingResults
-                , leaderBoard = LeaderBoard [ Score model.user score ]
+                , leaderBoard = LeaderBoard []
               }
-            , -- TODO Send results to server
-              Cmd.none
+            , cmd
             )
 
         NextQuestion ->
@@ -275,33 +297,55 @@ computeScore scores =
 -- PORT DECODER
 
 
-type PortMessage
-    = Ack String
-    | Nack String
-
-
-portDecoder : D.Decoder PortMessage
+portDecoder : D.Decoder LeaderBoard
 portDecoder =
-    D.oneOf
-        [ D.field "data" D.string |> D.andThen (\s -> D.succeed (Ack s))
-        , D.field "error" D.string |> D.andThen (\s -> D.succeed (Nack s))
-        ]
+    D.map LeaderBoard
+        (D.list scoreDecoder)
+
+
+scoreDecoder : D.Decoder Score
+scoreDecoder =
+    D.map2 Score
+        (D.field "user" userDecoder)
+        (D.field "score" D.int)
+
+
+userDecoder : D.Decoder User
+userDecoder =
+    D.map LoggedIn D.string
+
+
+
+-- D.oneOf
+--     [ D.field "data" D.string |> D.andThen (\s -> D.succeed (Ack s))
+--     , D.field "error" D.string |> D.andThen (\s -> D.succeed (Nack s))
+--     ]
 
 
 type Outgoing
-    = StoreUser String
+    = SaveScore Score
 
 
 portEncoder : Outgoing -> String
 portEncoder outgoing =
     case outgoing of
-        StoreUser user ->
+        SaveScore score ->
             Json.Encode.encode 0
                 (Json.Encode.object
-                    [ ( "type", Json.Encode.string "localStorage" )
-                    , ( "payload", Json.Encode.string user )
+                    [ ( "type", Json.Encode.string "score" )
+                    , ( "payload", encodeScore score )
                     ]
                 )
+
+
+encodeScore : Score -> Json.Encode.Value
+encodeScore score =
+    case score of
+        Score user n ->
+            Json.Encode.object
+                [ ( "user", Json.Encode.string (toString user) )
+                , ( "score", Json.Encode.int n )
+                ]
 
 
 
@@ -318,10 +362,24 @@ view model =
             div []
                 [ -- QUIZ
                   viewQuiz model.quiz
+                , viewUser model.user
                 ]
 
         ViewingResults ->
-            viewLeaderBoard model.leaderBoard
+            div []
+                [ viewError model.errorMessage
+                , viewLeaderBoard model.leaderBoard
+                ]
+
+
+viewError : Maybe D.Error -> Html Msg
+viewError maybeError =
+    case maybeError of
+        Nothing ->
+            text ""
+
+        Just error ->
+            div [] [ text (D.errorToString error) ]
 
 
 viewStartPage : String -> Html Msg
@@ -362,7 +420,18 @@ viewLeaderBoard : LeaderBoard -> Html Msg
 viewLeaderBoard leaderBoard =
     case leaderBoard of
         LeaderBoard scores ->
-            div [] (List.map viewScore scores)
+            div
+                [ quizContainerStyle
+                ]
+                [ h1
+                    [ class "font-bold p-4"
+                    ]
+                    [ text "Score board" ]
+                , div
+                    [ class "px-4 pb-4"
+                    ]
+                    (List.map viewScore scores)
+                ]
 
 
 viewScore : Score -> Html Msg
@@ -384,25 +453,17 @@ toString user =
             str
 
 
-viewUser : User -> String -> Html Msg
-viewUser user draftName =
-    case user of
-        Anonymous ->
-            div []
-                [ div [] [ text "Not signed in" ]
-                , input
-                    [ type_ "text"
-                    , placeholder "Draft"
-                    , onInput UserDraftChanged
-                    , on "keydown" (ifIsEnter UserSend)
-                    , value draftName
-                    ]
-                    []
-                , button [ onClick UserSend ] [ text "Send" ]
-                ]
-
-        LoggedIn str ->
-            div [] [ text ("Signed in as: " ++ str) ]
+viewUser : User -> Html Msg
+viewUser user =
+    div
+        [ class "font-light text-sm p-1"
+        ]
+        [ text "Signed in as "
+        , span
+            [ class "font-bold"
+            ]
+            [ text (toString user) ]
+        ]
 
 
 viewStatus : Status -> Html Msg
