@@ -469,12 +469,15 @@ viewStartPage draftName =
                     ]
                     []
                 ]
-            , button
-                [ onClick StartQuiz
-                , primaryButtonStyle
-                , disabled (draftName == "")
-                ]
-                [ text "Start Quiz!" ]
+            , if draftName /= "" then
+                button
+                    [ onClick StartQuiz
+                    , primaryButtonStyle
+                    ]
+                    [ text "Start Quiz!" ]
+
+              else
+                text ""
             ]
         ]
 
