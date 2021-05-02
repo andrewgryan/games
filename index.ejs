@@ -9,35 +9,26 @@
     <body>
         <div id="root"></div>
         <script src="index.js" charset="utf-8"></script>
+        <script src="<%= baseUrl %>/socket.io/socket.io.js" charset="utf-8"></script>
         <script>
             const app = Elm.Main.init({
                 node: document.getElementById("root")
             })
 
-            // Connect Elm to/from WebSocket
+            // Socket.io client
             console.log("attempt to connect to websocket")
-            let socket = new WebSocket('<%= endpoint %>')
+            let socket = io();
+            
+
+            // Connect Elm to/from WebSocket
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", message)
-                socket.send(message)
+                socket.emit("score", message)
             })
-            socket.onopen = () => {
-                /**
-                app.ports.messageReceiver.send({
-                    data: "Socket open"
-                })
-                */
-            }
-            socket.addEventListener("message", (ev) => {
-                console.log("RECV FROM SERVER", ev.data)
-                app.ports.messageReceiver.send(JSON.parse(ev.data))
+            socket.on("leaderboard", (leaderboard) => {
+                console.log("RECV FROM SERVER", leaderboard)
+                app.ports.messageReceiver.send(leaderboard)
             })
-            socket.onclose = () => {
-                console.log("lost websocket connection")
-                app.ports.messageReceiver.send({
-                    error: "Lost connection"
-                })
-            }
         </script>
     </body>
 </html>
