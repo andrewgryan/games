@@ -7,6 +7,7 @@
 port module Main exposing (main, portDecoder)
 
 import Browser
+import Browser.Navigation
 import Html
     exposing
         ( Html
@@ -32,6 +33,7 @@ import Html.Attributes
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode exposing (Value)
+import Url
 
 
 
@@ -93,7 +95,8 @@ type Score
 
 
 type Msg
-    = DraftChanged String
+    = NoOp
+    | DraftChanged String
     | Recv Value
     | WebSocket Status
       -- USER
@@ -117,8 +120,8 @@ type Status
 -- INIT
 
 
-init : () -> ( Model, Cmd Msg )
-init flags =
+init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init flags url key =
     ( { draft = ""
       , messages = []
       , status = NotStarted
@@ -317,6 +320,10 @@ update msg model =
                     in
                     ( { model | quiz = quiz }, Cmd.none )
 
+        NoOp ->
+            -- TEMPORARY TO PASS COMPILER
+            ( model, Cmd.none )
+
 
 updateQuestion : Question -> Answer -> Question
 updateQuestion question answer =
@@ -414,8 +421,15 @@ encodeScore score =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
+    { body = [ viewBody model ]
+    , title = "The Quiet Ryan's"
+    }
+
+
+viewBody : Model -> Html Msg
+viewBody model =
     case model.game of
         WaitingToPlay ->
             viewStartPage model.userDraft
@@ -747,12 +761,24 @@ ifIsEnter msg =
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.application
         { init = init
+        , onUrlChange = onUrlChange
+        , onUrlRequest = onUrlRequest
         , update = update
         , view = view
         , subscriptions = subscriptions
         }
+
+
+onUrlChange : Url.Url -> Msg
+onUrlChange url =
+    NoOp
+
+
+onUrlRequest : Browser.UrlRequest -> Msg
+onUrlRequest request =
+    NoOp
 
 
 
