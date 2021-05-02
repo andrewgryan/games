@@ -24,6 +24,7 @@ import Html.Attributes
     exposing
         ( attribute
         , class
+        , disabled
         , placeholder
         , type_
         , value
@@ -141,19 +142,80 @@ init flags =
                     , Wrong "Thomas Edison"
                     , Wrong "Isambard Kingdom Brunel"
                     ]
+
+                -- 3
                 , Question "What is the capital of Australia?"
                     [ Wrong "Sydney"
                     , Wrong "Melbourne"
                     , Right "Canberra"
                     ]
+
+                -- 4
                 , Question "What is the largest island in the Meditteranean?"
                     [ Wrong "Corsica"
                     , Right "Sicily"
                     , Wrong "Cyprus"
                     ]
-                , Question "Do you want to exit Netflix?"
+
+                -- 5
+                , Question "Do you want to continue watching Netflix?"
                     [ Right "Yes"
-                    , Wrong "No"
+                    , Right "No"
+                    ]
+
+                -- 6
+                , Question "Who painted the ceiling of the Sistine Chapel in Rome?"
+                    [ Wrong "Leonardo"
+                    , Wrong "Donatello"
+                    , Right "Michelangelo"
+                    , Wrong "Raphael"
+                    ]
+
+                -- 7
+                , Question "Complete the lyric: It's been a hard day's night, I should be..."
+                    [ Wrong "...working like a dog"
+                    , Right "...sleeping like a log"
+                    , Wrong "...a paperback writer"
+                    ]
+
+                -- 8
+                , Question "How white was Mary's lamb's fleece?"
+                    [ Wrong "Nutmeg"
+                    , Wrong "Almond"
+                    , Wrong "Blossom"
+                    , Wrong "Chiffon"
+                    , Wrong "Metal"
+                    , Right "Snow"
+                    ]
+
+                -- 9
+                , Question "Which of the following, was NOT one of Christopher Columbus's ships?"
+                    [ Wrong "Pinta"
+                    , Wrong "Santa Maria"
+                    , Right "Beagle"
+                    , Wrong "Nina"
+                    ]
+
+                -- 10
+                , Question "In bowling, what are 3 consecutive strikes called?"
+                    [ Wrong "An eagle"
+                    , Wrong "A birdie"
+                    , Right "A turkey"
+                    , Wrong "A parrot"
+                    ]
+
+                -- 11
+                , Question "What's the highest mountain in Africa?"
+                    [ Wrong "Mount Kenya"
+                    , Wrong "Mount Stanley"
+                    , Right "Mount Kilmanjaro"
+                    ]
+
+                -- 12
+                , Question "What's unique about Mozambiques flag?"
+                    [ Right "It has an AK-47 on it"
+                    , Wrong "It has no national flag"
+                    , Wrong "It's not rectangular"
                     ]
                 ]
       }
@@ -410,6 +472,7 @@ viewStartPage draftName =
             , button
                 [ onClick StartQuiz
                 , primaryButtonStyle
+                , disabled (draftName == "")
                 ]
                 [ text "Start Quiz!" ]
             ]
@@ -490,8 +553,11 @@ viewQuiz (Quiz previous question remaining) =
 
                 -- Navigation buttons
                 , div [ class "flex justify-end" ]
-                    [ nextButton
+                    [ nextButton (not (answered question))
                     ]
+
+                -- Remaining questions info
+                , viewRemaining remaining
                 ]
 
         _ ->
@@ -514,9 +580,44 @@ viewQuiz (Quiz previous question remaining) =
                         -- Navigation buttons
                         , div [ class "flex justify-end" ]
                             [ previousButton
-                            , nextButton
+                            , nextButton (not (answered question))
                             ]
+
+                        -- Remaining questions info
+                        , viewRemaining remaining
                         ]
+
+
+answered : Question -> Bool
+answered question =
+    case question of
+        Question _ _ ->
+            False
+
+        Answered _ _ _ ->
+            True
+
+
+viewRemaining : List Question -> Html Msg
+viewRemaining remaining =
+    let
+        n =
+            List.length remaining
+    in
+    div
+        [ class "text-sm text-gray-400 px-2"
+        ]
+        [ text (String.fromInt n ++ " " ++ plural n ++ " to go")
+        ]
+
+
+plural : Int -> String
+plural n =
+    if n > 0 then
+        "questions"
+
+    else
+        "question"
 
 
 viewQuestion : Question -> Html Msg
@@ -560,11 +661,12 @@ previousButton =
         [ text "Go back" ]
 
 
-nextButton : Html Msg
-nextButton =
+nextButton : Bool -> Html Msg
+nextButton notAnswered =
     button
         [ primaryButtonStyle
         , onClick NextQuestion
+        , disabled notAnswered
         ]
         [ text "Next" ]
 
