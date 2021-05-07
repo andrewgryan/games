@@ -139,11 +139,9 @@ type alias Flags =
 init : D.Value -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init value url key =
     let
+        -- TODO use flags.route
         flags =
             D.decodeValue decoderFlags value
-
-        _ =
-            Debug.log "flags" flags
     in
     ( { key = key
       , url = url
