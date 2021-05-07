@@ -133,7 +133,7 @@ type Route
 
 
 type alias Flags =
-    { route : String }
+    { route : Maybe String }
 
 
 init : D.Value -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -256,7 +256,7 @@ init value url key =
 decoderFlags : D.Decoder Flags
 decoderFlags =
     D.map Flags
-        (D.field "route" D.string)
+        (D.maybe (D.field "route" D.string))
 
 
 
