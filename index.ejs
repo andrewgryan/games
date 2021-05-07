@@ -11,9 +11,13 @@
         <script src="index.js" charset="utf-8"></script>
         <script src="<%= baseUrl %>/socket.io/socket.io.js" charset="utf-8"></script>
         <script>
+            let flags = <%- flags %>
+            console.log(flags)
             const app = Elm.Main.init({
-                node: document.getElementById("root")
+                node: document.getElementById("root"),
+                flags
             })
+            console.log(flags);
 
             // Socket.io client
             console.log("attempt to connect to websocket")

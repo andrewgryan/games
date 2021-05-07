@@ -50,6 +50,10 @@ type alias Model =
     , quiz : Quiz
     , game : Game
     , leaderBoard : LeaderBoard
+
+    -- Navigation
+    , key : Browser.Navigation.Key
+    , url : Url.Url
     }
 
 
@@ -108,6 +112,9 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+      -- NAVIGATION
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 type Status
@@ -120,14 +127,34 @@ type Status
 -- INIT
 
 
-init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-init flags url key =
-    ( { draft = ""
+type Route
+    = IndexRoute
+    | QuizRoute
+
+
+type alias Flags =
+    { route : String }
+
+
+init : D.Value -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init value url key =
+    let
+        flags =
+            D.decodeValue decoderFlags value
+
+        _ =
+            Debug.log "flags" flags
+    in
+    ( { key = key
+      , url = url
+      , draft = ""
       , messages = []
       , status = NotStarted
       , errorMessage = Nothing
       , user = Anonymous
       , userDraft = ""
+
+      -- QUIZ
       , game = WaitingToPlay
       , leaderBoard =
             LeaderBoard []
@@ -226,6 +253,12 @@ init flags url key =
     )
 
 
+decoderFlags : D.Decoder Flags
+decoderFlags =
+    D.map Flags
+        (D.field "route" D.string)
+
+
 
 -- UPDATE
 
@@ -247,6 +280,33 @@ update msg model =
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
 
+        -- NAVIGATION
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    let
+                        _ =
+                            Debug.log "Internal" (Url.toString url)
+                    in
+                    ( model
+                    , Browser.Navigation.pushUrl model.key
+                        (Url.toString url)
+                    )
+
+                Browser.External href ->
+                    let
+                        _ =
+                            Debug.log "External" href
+                    in
+                    ( model, Browser.Navigation.load href )
+
+        UrlChanged url ->
+            let
+                _ =
+                    Debug.log "UrlChanged" (Url.toString url)
+            in
+            ( { model | url = url }, Cmd.none )
+
         -- USER
         UserSend ->
             ( { model
@@ -265,7 +325,7 @@ update msg model =
                 | game = Playing
                 , user = LoggedIn model.userDraft
               }
-            , Cmd.none
+            , Browser.Navigation.pushUrl model.key "/quiz"
             )
 
         FinishQuiz ->
@@ -759,26 +819,16 @@ ifIsEnter msg =
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program D.Value Model Msg
 main =
     Browser.application
         { init = init
-        , onUrlChange = onUrlChange
-        , onUrlRequest = onUrlRequest
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , update = update
         , view = view
         , subscriptions = subscriptions
         }
-
-
-onUrlChange : Url.Url -> Msg
-onUrlChange url =
-    NoOp
-
-
-onUrlRequest : Browser.UrlRequest -> Msg
-onUrlRequest request =
-    NoOp
 
 
 
