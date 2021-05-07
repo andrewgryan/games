@@ -13,7 +13,10 @@ app.use(express.static(__dirname + "/static"))
 app.set("view engine", "ejs")
 
 
-app.get("/", (req, res) => {
+let indexHandler = flags => (req, res) => {
+    if (typeof flags === "undefined") {
+        flags = {}
+    }
     // res.sendFile(path.join(__dirname, "index.html"))
     let baseUrl
     if (process.env.NODE_ENV === "production") {
@@ -23,9 +26,12 @@ app.get("/", (req, res) => {
     }
     res.render(path.join(__dirname, "index.ejs"), {
         title: "Quiz",
-        baseUrl
+        baseUrl,
+        flags: JSON.stringify(flags)
     })
-})
+}
+app.get("/", indexHandler())
+app.get("/quiz", indexHandler({ route: "/quiz" }))
 
 
 let httpServer = http.createServer(app)

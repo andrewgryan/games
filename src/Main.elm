@@ -7,6 +7,7 @@
 port module Main exposing (main, portDecoder)
 
 import Browser
+import Browser.Navigation
 import Html
     exposing
         ( Html
@@ -32,6 +33,7 @@ import Html.Attributes
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode exposing (Value)
+import Url
 
 
 
@@ -48,6 +50,10 @@ type alias Model =
     , quiz : Quiz
     , game : Game
     , leaderBoard : LeaderBoard
+
+    -- Navigation
+    , key : Browser.Navigation.Key
+    , url : Url.Url
     }
 
 
@@ -93,7 +99,8 @@ type Score
 
 
 type Msg
-    = DraftChanged String
+    = NoOp
+    | DraftChanged String
     | Recv Value
     | WebSocket Status
       -- USER
@@ -105,6 +112,9 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+      -- NAVIGATION
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 type Status
@@ -117,14 +127,32 @@ type Status
 -- INIT
 
 
-init : () -> ( Model, Cmd Msg )
-init flags =
-    ( { draft = ""
+type Route
+    = IndexRoute
+    | QuizRoute
+
+
+type alias Flags =
+    { route : Maybe String }
+
+
+init : D.Value -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init value url key =
+    let
+        -- TODO use flags.route
+        flags =
+            D.decodeValue decoderFlags value
+    in
+    ( { key = key
+      , url = url
+      , draft = ""
       , messages = []
       , status = NotStarted
       , errorMessage = Nothing
       , user = Anonymous
       , userDraft = ""
+
+      -- QUIZ
       , game = WaitingToPlay
       , leaderBoard =
             LeaderBoard []
@@ -223,6 +251,12 @@ init flags =
     )
 
 
+decoderFlags : D.Decoder Flags
+decoderFlags =
+    D.map Flags
+        (D.maybe (D.field "route" D.string))
+
+
 
 -- UPDATE
 
@@ -244,6 +278,33 @@ update msg model =
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
 
+        -- NAVIGATION
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    let
+                        _ =
+                            Debug.log "Internal" (Url.toString url)
+                    in
+                    ( model
+                    , Browser.Navigation.pushUrl model.key
+                        (Url.toString url)
+                    )
+
+                Browser.External href ->
+                    let
+                        _ =
+                            Debug.log "External" href
+                    in
+                    ( model, Browser.Navigation.load href )
+
+        UrlChanged url ->
+            let
+                _ =
+                    Debug.log "UrlChanged" (Url.toString url)
+            in
+            ( { model | url = url }, Cmd.none )
+
         -- USER
         UserSend ->
             ( { model
@@ -262,7 +323,7 @@ update msg model =
                 | game = Playing
                 , user = LoggedIn model.userDraft
               }
-            , Cmd.none
+            , Browser.Navigation.pushUrl model.key "/quiz"
             )
 
         FinishQuiz ->
@@ -316,6 +377,10 @@ update msg model =
                             Quiz previous (updateQuestion question answer) next
                     in
                     ( { model | quiz = quiz }, Cmd.none )
+
+        NoOp ->
+            -- TEMPORARY TO PASS COMPILER
+            ( model, Cmd.none )
 
 
 updateQuestion : Question -> Answer -> Question
@@ -414,8 +479,15 @@ encodeScore score =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
+    { body = [ viewBody model ]
+    , title = "The Quiet Ryan's"
+    }
+
+
+viewBody : Model -> Html Msg
+viewBody model =
     case model.game of
         WaitingToPlay ->
             viewStartPage model.userDraft
@@ -469,12 +541,15 @@ viewStartPage draftName =
                     ]
                     []
                 ]
-            , button
-                [ onClick StartQuiz
-                , primaryButtonStyle
-                , disabled (draftName == "")
-                ]
-                [ text "Start Quiz!" ]
+            , if draftName /= "" then
+                button
+                    [ onClick StartQuiz
+                    , primaryButtonStyle
+                    ]
+                    [ text "Start Quiz!" ]
+
+              else
+                text ""
             ]
         ]
 
@@ -742,10 +817,12 @@ ifIsEnter msg =
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program D.Value Model Msg
 main =
-    Browser.element
+    Browser.application
         { init = init
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , update = update
         , view = view
         , subscriptions = subscriptions
