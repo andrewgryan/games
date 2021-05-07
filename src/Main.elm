@@ -33,6 +33,7 @@ import Html.Attributes
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode exposing (Value)
+import Quiz exposing (Answer, Question, Quiz)
 import Url
 
 
@@ -70,20 +71,6 @@ type Game
     = WaitingToPlay
     | Playing
     | ViewingResults
-
-
-type Quiz
-    = Quiz (List Question) Question (List Question)
-
-
-type Question
-    = Question String (List Answer)
-    | Answered String (List Answer) Answer
-
-
-type Answer
-    = Right String
-    | Wrong String
 
 
 type LeaderBoard
@@ -156,96 +143,7 @@ init value url key =
       , game = WaitingToPlay
       , leaderBoard =
             LeaderBoard []
-      , quiz =
-            Quiz
-                []
-                (Question "How many pennies in a shilling?"
-                    [ Right "12"
-                    , Wrong "24"
-                    , Wrong "1/2"
-                    ]
-                )
-                [ Question "Who invented dynamite?"
-                    [ Right "Alfred Nobel"
-                    , Wrong "Thomas Edison"
-                    , Wrong "Isambard Kingdom Brunel"
-                    ]
-
-                -- 3
-                , Question "What is the capital of Australia?"
-                    [ Wrong "Sydney"
-                    , Wrong "Melbourne"
-                    , Right "Canberra"
-                    ]
-
-                -- 4
-                , Question "What is the largest island in the Meditteranean?"
-                    [ Wrong "Corsica"
-                    , Right "Sicily"
-                    , Wrong "Cyprus"
-                    ]
-
-                -- 5
-                , Question "Do you want to continue watching Netflix?"
-                    [ Right "Yes"
-                    , Right "No"
-                    ]
-
-                -- 6
-                , Question "Who painted the ceiling of the Sistine Chapel in Rome?"
-                    [ Wrong "Leonardo"
-                    , Wrong "Donatello"
-                    , Right "Michelangelo"
-                    , Wrong "Raphael"
-                    ]
-
-                -- 7
-                , Question "Complete the lyric: It's been a hard day's night, I should be..."
-                    [ Wrong "...working like a dog"
-                    , Right "...sleeping like a log"
-                    , Wrong "...a paperback writer"
-                    ]
-
-                -- 8
-                , Question "How white was Mary's lamb's fleece?"
-                    [ Wrong "Nutmeg"
-                    , Wrong "Almond"
-                    , Wrong "Blossom"
-                    , Wrong "Chiffon"
-                    , Wrong "Metal"
-                    , Right "Snow"
-                    ]
-
-                -- 9
-                , Question "Which of the following, was NOT one of Christopher Columbus's ships?"
-                    [ Wrong "Pinta"
-                    , Wrong "Santa Maria"
-                    , Right "Beagle"
-                    , Wrong "Nina"
-                    ]
-
-                -- 10
-                , Question "In bowling, what are 3 consecutive strikes called?"
-                    [ Wrong "An eagle"
-                    , Wrong "A birdie"
-                    , Right "A turkey"
-                    , Wrong "A parrot"
-                    ]
-
-                -- 11
-                , Question "What's the highest mountain in Africa?"
-                    [ Wrong "Mount Kenya"
-                    , Wrong "Mount Stanley"
-                    , Right "Mount Kilmanjaro"
-                    ]
-
-                -- 12
-                , Question "What's unique about Mozambiques flag?"
-                    [ Right "It has an AK-47 on it"
-                    , Wrong "It has no national flag"
-                    , Wrong "It's not rectangular"
-                    ]
-                ]
+      , quiz = Quiz.first
       }
     , Cmd.none
     )
@@ -328,14 +226,8 @@ update msg model =
 
         FinishQuiz ->
             let
-                tally =
-                    model.quiz
-                        |> allQuestions
-                        |> List.map toScore
-                        |> computeScore
-
                 score =
-                    Score model.user tally
+                    Score model.user (Quiz.tally model.quiz)
 
                 cmd =
                     SaveScore score
@@ -350,74 +242,17 @@ update msg model =
             )
 
         NextQuestion ->
-            case model.quiz of
-                Quiz previous current next ->
-                    case next of
-                        [] ->
-                            ( model, Cmd.none )
-
-                        question :: remaining ->
-                            ( { model | quiz = Quiz (current :: previous) question remaining }, Cmd.none )
+            ( { model | quiz = Quiz.nextQuestion model.quiz }, Cmd.none )
 
         PreviousQuestion ->
-            case model.quiz of
-                Quiz previous current next ->
-                    case previous of
-                        [] ->
-                            ( model, Cmd.none )
-
-                        question :: remaining ->
-                            ( { model | quiz = Quiz remaining question (current :: next) }, Cmd.none )
+            ( { model | quiz = Quiz.previousQuestion model.quiz }, Cmd.none )
 
         SelectAnswer answer ->
-            case model.quiz of
-                Quiz previous question next ->
-                    let
-                        quiz =
-                            Quiz previous (updateQuestion question answer) next
-                    in
-                    ( { model | quiz = quiz }, Cmd.none )
+            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
 
         NoOp ->
             -- TEMPORARY TO PASS COMPILER
             ( model, Cmd.none )
-
-
-updateQuestion : Question -> Answer -> Question
-updateQuestion question answer =
-    case question of
-        Question statement answers ->
-            Answered statement answers answer
-
-        Answered statement answers _ ->
-            Answered statement answers answer
-
-
-allQuestions : Quiz -> List Question
-allQuestions quiz =
-    case quiz of
-        Quiz previous current next ->
-            previous ++ [ current ] ++ next
-
-
-toScore : Question -> Int
-toScore question =
-    case question of
-        Answered _ _ answer ->
-            case answer of
-                Right _ ->
-                    1
-
-                Wrong _ ->
-                    0
-
-        Question _ _ ->
-            0
-
-
-computeScore : List Int -> Int
-computeScore scores =
-    List.foldr (+) 0 scores
 
 
 
@@ -620,15 +455,25 @@ quizContainerStyle =
 
 
 viewQuiz : Quiz -> Html Msg
-viewQuiz (Quiz previous question remaining) =
+viewQuiz quiz =
+    let
+        previous =
+            Quiz.getPrevious quiz
+
+        question =
+            Quiz.getQuestion quiz
+
+        remaining =
+            Quiz.getNext quiz
+    in
     case previous of
         [] ->
             div [ quizContainerStyle ]
-                [ viewQuestion question
+                [ Quiz.viewQuestion SelectAnswer question
 
                 -- Navigation buttons
                 , div [ class "flex justify-end" ]
-                    [ nextButton (not (answered question))
+                    [ nextButton (not (Quiz.answered question))
                     ]
 
                 -- Remaining questions info
@@ -639,7 +484,7 @@ viewQuiz (Quiz previous question remaining) =
             case remaining of
                 [] ->
                     div [ quizContainerStyle ]
-                        [ viewQuestion question
+                        [ Quiz.viewQuestion SelectAnswer question
 
                         -- Navigation buttons
                         , div [ class "flex justify-end" ]
@@ -650,27 +495,17 @@ viewQuiz (Quiz previous question remaining) =
 
                 _ ->
                     div [ quizContainerStyle ]
-                        [ viewQuestion question
+                        [ Quiz.viewQuestion SelectAnswer question
 
                         -- Navigation buttons
                         , div [ class "flex justify-end" ]
                             [ previousButton
-                            , nextButton (not (answered question))
+                            , nextButton (not (Quiz.answered question))
                             ]
 
                         -- Remaining questions info
                         , viewRemaining remaining
                         ]
-
-
-answered : Question -> Bool
-answered question =
-    case question of
-        Question _ _ ->
-            False
-
-        Answered _ _ _ ->
-            True
 
 
 viewRemaining : List Question -> Html Msg
@@ -693,33 +528,6 @@ plural n =
 
     else
         "question"
-
-
-viewQuestion : Question -> Html Msg
-viewQuestion question =
-    case question of
-        Question statement answers ->
-            div []
-                [ -- Question
-                  viewStatement statement
-
-                -- Answers
-                , ul [] (List.map viewAnswer answers)
-                ]
-
-        Answered statement answers answer ->
-            div []
-                [ -- Question
-                  viewStatement statement
-
-                -- Answers
-                , ul [] (List.map (viewAnswered answer) answers)
-                ]
-
-
-viewStatement : String -> Html Msg
-viewStatement statement =
-    div [ class "p-2 font-bold" ] [ text statement ]
 
 
 primaryButtonStyle : Html.Attribute Msg
@@ -753,47 +561,6 @@ finishButton =
         , onClick FinishQuiz
         ]
         [ text "Finish" ]
-
-
-viewAnswer : Answer -> Html Msg
-viewAnswer answer =
-    li
-        [ styleAnswer False
-        , onClick (SelectAnswer answer)
-        ]
-        [ text (answerToString answer) ]
-
-
-viewAnswered : Answer -> Answer -> Html Msg
-viewAnswered selected answer =
-    li
-        [ styleAnswer (selected == answer)
-        , onClick (SelectAnswer answer)
-        ]
-        [ text (answerToString answer) ]
-
-
-styleAnswer : Bool -> Html.Attribute Msg
-styleAnswer selected =
-    let
-        common =
-            "px-4 hover:text-white hover:bg-blue-500 cursor-pointer"
-    in
-    if selected then
-        class ("font-bold " ++ common)
-
-    else
-        class common
-
-
-answerToString : Answer -> String
-answerToString answer =
-    case answer of
-        Right str ->
-            str
-
-        Wrong str ->
-            str
 
 
 
