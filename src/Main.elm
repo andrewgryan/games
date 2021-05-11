@@ -43,11 +43,29 @@ import Url
 
 
 
+-- SESSION
+
+
+type Session
+    = Session Key
+
+
+toKey : Session -> Key
+toKey (Session key) =
+    key
+
+
+fromKey : Key -> Session
+fromKey key =
+    Session key
+
+
+
 -- MODEL
 
 
 type Model
-    = Model Key Page
+    = Model Session Page
 
 
 type Page
@@ -80,12 +98,14 @@ type alias Flags =
 init : D.Value -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init value url key =
     let
-        -- TODO use flags.route
         flags =
             D.decodeValue decoderFlags value
 
         route =
             Route.fromUrl url
+
+        session =
+            fromKey key
 
         _ =
             Debug.log "route" route
@@ -96,14 +116,14 @@ init value url key =
                 page =
                     IndexPage (Index.init key url)
             in
-            ( Model key page, Cmd.none )
+            ( Model session page, Cmd.none )
 
         Route.New ->
             let
                 page =
                     NewPage New.init
             in
-            ( Model key page, Cmd.none )
+            ( Model session page, Cmd.none )
 
         Route.Quiz ->
             -- TODO support this route
@@ -111,7 +131,7 @@ init value url key =
                 page =
                     NewPage New.init
             in
-            ( Model key page, Cmd.none )
+            ( Model session page, Cmd.none )
 
 
 decoderFlags : D.Decoder Flags
@@ -125,10 +145,13 @@ decoderFlags =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg (Model key page) =
+update msg (Model session page) =
     let
         model =
-            Model key page
+            Model session page
+
+        key =
+            toKey session
     in
     case ( msg, page ) of
         -- NAVIGATION
@@ -154,7 +177,7 @@ update msg (Model key page) =
                         ( indexModel, cmd ) =
                             Index.update (Index.gotLeaderBoard leaderBoard) subModel
                     in
-                    ( Model key (IndexPage indexModel), Cmd.map IndexMsg cmd )
+                    ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
 
                 Err error ->
                     ( model, Cmd.none )
@@ -165,14 +188,14 @@ update msg (Model key page) =
                 ( indexModel, cmd ) =
                     Index.update subMsg subModel
             in
-            ( Model key (IndexPage indexModel), Cmd.map IndexMsg cmd )
+            ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
 
         ( NewMsg subMsg, NewPage subModel ) ->
             let
                 ( newModel, cmd ) =
                     New.update subMsg subModel
             in
-            ( Model key (NewPage newModel), Cmd.map NewMsg cmd )
+            ( Model session (NewPage newModel), Cmd.map NewMsg cmd )
 
         ( _, _ ) ->
             ( model, Cmd.none )

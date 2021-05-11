@@ -1,6 +1,17 @@
 module Helper exposing (..)
 
+import Html exposing (Attribute)
+import Html.Attributes exposing (classList)
 import Json.Decode as D
+
+
+
+-- CLASSES
+
+
+classes : List String -> Attribute msg
+classes strs =
+    classList (List.map (\c -> ( c, True )) strs)
 
 
 
