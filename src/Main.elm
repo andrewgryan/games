@@ -61,6 +61,7 @@ type Page
 
 type Msg
     = IndexMsg Index.Msg
+    | NewMsg New.Msg
       -- PORT
     | Recv Value
       -- NAVIGATION
@@ -129,9 +130,9 @@ update msg (Model key page) =
         model =
             Model key page
     in
-    case msg of
+    case ( msg, page ) of
         -- NAVIGATION
-        LinkClicked urlRequest ->
+        ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model
@@ -142,39 +143,39 @@ update msg (Model key page) =
                 Browser.External href ->
                     ( model, Browser.Navigation.load href )
 
-        UrlChanged url ->
+        ( UrlChanged url, _ ) ->
             ( model, Cmd.none )
 
         -- PORT
-        Recv value ->
-            case page of
-                IndexPage subModel ->
-                    case D.decodeValue portDecoder value of
-                        Ok leaderBoard ->
-                            let
-                                ( indexModel, cmd ) =
-                                    Index.update (Index.gotLeaderBoard leaderBoard) subModel
-                            in
-                            ( Model key (IndexPage indexModel), Cmd.map IndexMsg cmd )
-
-                        Err error ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        -- PAGE
-        IndexMsg subMsg ->
-            case page of
-                IndexPage subModel ->
+        ( Recv value, IndexPage subModel ) ->
+            case D.decodeValue portDecoder value of
+                Ok leaderBoard ->
                     let
                         ( indexModel, cmd ) =
-                            Index.update subMsg subModel
+                            Index.update (Index.gotLeaderBoard leaderBoard) subModel
                     in
                     ( Model key (IndexPage indexModel), Cmd.map IndexMsg cmd )
 
-                _ ->
+                Err error ->
                     ( model, Cmd.none )
+
+        -- PAGE
+        ( IndexMsg subMsg, IndexPage subModel ) ->
+            let
+                ( indexModel, cmd ) =
+                    Index.update subMsg subModel
+            in
+            ( Model key (IndexPage indexModel), Cmd.map IndexMsg cmd )
+
+        ( NewMsg subMsg, NewPage subModel ) ->
+            let
+                ( newModel, cmd ) =
+                    New.update subMsg subModel
+            in
+            ( Model key (NewPage newModel), Cmd.map NewMsg cmd )
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
 
@@ -196,20 +197,19 @@ portDecoder =
 
 view : Model -> Browser.Document Msg
 view model =
-    { body = [ Html.map IndexMsg (viewBody model) ]
+    { body = [ viewBody model ]
     , title = "The Quiet Ryan's"
     }
 
 
-viewBody : Model -> Html Index.Msg
+viewBody : Model -> Html Msg
 viewBody (Model key page) =
     case page of
         IndexPage model ->
-            Index.view model
+            Html.map IndexMsg (Index.view model)
 
-        _ ->
-            -- TODO Branch pages
-            New.view
+        NewPage model ->
+            Html.map NewMsg (New.view model)
 
 
 
