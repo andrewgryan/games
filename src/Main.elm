@@ -7,7 +7,7 @@
 port module Main exposing (main, portDecoder)
 
 import Browser
-import Browser.Navigation
+import Browser.Navigation exposing (Key)
 import Html
     exposing
         ( Html
@@ -33,7 +33,9 @@ import Html.Attributes
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode exposing (Value)
+import Page.New as New
 import Quiz exposing (Answer, Question, Quiz)
+import Route exposing (Route(..))
 import Url
 
 
@@ -41,7 +43,16 @@ import Url
 -- MODEL
 
 
-type alias Model =
+type Model
+    = Model Key Page
+
+
+type Page
+    = IndexPage IndexModel
+    | NewPage New.Model
+
+
+type alias IndexModel =
     { user : User
     , userDraft : String
     , draft : String
@@ -86,22 +97,29 @@ type Score
 
 
 type Msg
+    = IndexMsg IndexMsg
+      -- PORT
+    | Recv Value
+      -- NAVIGATION
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
+
+
+type IndexMsg
     = NoOp
     | DraftChanged String
-    | Recv Value
     | WebSocket Status
       -- USER
     | UserSend
     | UserDraftChanged String
+      --LEADERBOARD
+    | GotLeaderBoard LeaderBoard
       -- QUIZ
     | StartQuiz
     | NextQuestion
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
-      -- NAVIGATION
-    | LinkClicked Browser.UrlRequest
-    | UrlChanged Url.Url
 
 
 type Status
@@ -114,11 +132,6 @@ type Status
 -- INIT
 
 
-type Route
-    = IndexRoute
-    | QuizRoute
-
-
 type alias Flags =
     { route : Maybe String }
 
@@ -129,24 +142,50 @@ init value url key =
         -- TODO use flags.route
         flags =
             D.decodeValue decoderFlags value
-    in
-    ( { key = key
-      , url = url
-      , draft = ""
-      , messages = []
-      , status = NotStarted
-      , errorMessage = Nothing
-      , user = Anonymous
-      , userDraft = ""
 
-      -- QUIZ
-      , game = WaitingToPlay
-      , leaderBoard =
-            LeaderBoard []
-      , quiz = Quiz.first
-      }
-    , Cmd.none
-    )
+        route =
+            Route.fromUrl url
+
+        _ =
+            Debug.log "route" route
+    in
+    case route of
+        Route.Index ->
+            let
+                page =
+                    IndexPage
+                        { key = key
+                        , url = url
+                        , draft = ""
+                        , messages = []
+                        , status = NotStarted
+                        , errorMessage = Nothing
+                        , user = Anonymous
+                        , userDraft = ""
+
+                        -- QUIZ
+                        , game = WaitingToPlay
+                        , leaderBoard =
+                            LeaderBoard []
+                        , quiz = Quiz.first
+                        }
+            in
+            ( Model key page, Cmd.none )
+
+        Route.New ->
+            let
+                page =
+                    NewPage New.init
+            in
+            ( Model key page, Cmd.none )
+
+        Route.Quiz ->
+            -- TODO support this route
+            let
+                page =
+                    NewPage New.init
+            in
+            ( Model key page, Cmd.none )
 
 
 decoderFlags : D.Decoder Flags
@@ -160,48 +199,67 @@ decoderFlags =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg (Model key page) =
+    let
+        model =
+            Model key page
+    in
     case msg of
-        DraftChanged str ->
-            ( { model | draft = str }, Cmd.none )
-
-        Recv value ->
-            case D.decodeValue portDecoder value of
-                Ok leaderBoard ->
-                    ( { model | leaderBoard = leaderBoard }, Cmd.none )
-
-                Err error ->
-                    ( { model | errorMessage = Just error }, Cmd.none )
-
-        WebSocket status ->
-            ( { model | status = status }, Cmd.none )
-
         -- NAVIGATION
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    let
-                        _ =
-                            Debug.log "Internal" (Url.toString url)
-                    in
                     ( model
-                    , Browser.Navigation.pushUrl model.key
+                    , Browser.Navigation.pushUrl key
                         (Url.toString url)
                     )
 
                 Browser.External href ->
-                    let
-                        _ =
-                            Debug.log "External" href
-                    in
                     ( model, Browser.Navigation.load href )
 
         UrlChanged url ->
-            let
-                _ =
-                    Debug.log "UrlChanged" (Url.toString url)
-            in
-            ( { model | url = url }, Cmd.none )
+            ( model, Cmd.none )
+
+        -- PORT
+        Recv value ->
+            case page of
+                IndexPage subModel ->
+                    case D.decodeValue portDecoder value of
+                        Ok leaderBoard ->
+                            let
+                                ( indexModel, cmd ) =
+                                    updateIndex (GotLeaderBoard leaderBoard) subModel
+                            in
+                            ( Model key (IndexPage indexModel), cmd )
+
+                        Err error ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        -- PAGE
+        IndexMsg subMsg ->
+            case page of
+                IndexPage subModel ->
+                    let
+                        ( indexModel, cmd ) =
+                            updateIndex subMsg subModel
+                    in
+                    ( Model key (IndexPage indexModel), cmd )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+updateIndex : IndexMsg -> IndexModel -> ( IndexModel, Cmd Msg )
+updateIndex msg model =
+    case msg of
+        DraftChanged str ->
+            ( { model | draft = str }, Cmd.none )
+
+        WebSocket status ->
+            ( { model | status = status }, Cmd.none )
 
         -- USER
         UserSend ->
@@ -214,6 +272,10 @@ update msg model =
 
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
+
+        -- LEADERBOARD
+        GotLeaderBoard leaderBoard ->
+            ( { model | leaderBoard = leaderBoard }, Cmd.none )
 
         -- QUIZ
         StartQuiz ->
@@ -316,32 +378,38 @@ encodeScore score =
 
 view : Model -> Browser.Document Msg
 view model =
-    { body = [ viewBody model ]
+    { body = [ Html.map IndexMsg (viewBody model) ]
     , title = "The Quiet Ryan's"
     }
 
 
-viewBody : Model -> Html Msg
-viewBody model =
-    case model.game of
-        WaitingToPlay ->
-            viewStartPage model.userDraft
+viewBody : Model -> Html IndexMsg
+viewBody (Model key page) =
+    case page of
+        IndexPage model ->
+            case model.game of
+                WaitingToPlay ->
+                    viewStartPage model.userDraft
 
-        Playing ->
-            div []
-                [ -- QUIZ
-                  viewQuiz model.quiz
-                , viewUser model.user
-                ]
+                Playing ->
+                    div []
+                        [ -- QUIZ
+                          viewQuiz model.quiz
+                        , viewUser model.user
+                        ]
 
-        ViewingResults ->
-            div []
-                [ viewError model.errorMessage
-                , viewLeaderBoard model.leaderBoard
-                ]
+                ViewingResults ->
+                    div []
+                        [ viewError model.errorMessage
+                        , viewLeaderBoard model.leaderBoard
+                        ]
+
+        _ ->
+            -- TODO Branch pages
+            New.view
 
 
-viewError : Maybe D.Error -> Html Msg
+viewError : Maybe D.Error -> Html IndexMsg
 viewError maybeError =
     case maybeError of
         Nothing ->
@@ -351,7 +419,7 @@ viewError maybeError =
             div [] [ text (D.errorToString error) ]
 
 
-viewStartPage : String -> Html Msg
+viewStartPage : String -> Html IndexMsg
 viewStartPage draftName =
     div
         [ class "w-full max-w-xs"
@@ -389,7 +457,7 @@ viewStartPage draftName =
         ]
 
 
-viewLeaderBoard : LeaderBoard -> Html Msg
+viewLeaderBoard : LeaderBoard -> Html IndexMsg
 viewLeaderBoard leaderBoard =
     case leaderBoard of
         LeaderBoard scores ->
@@ -407,7 +475,7 @@ viewLeaderBoard leaderBoard =
                 ]
 
 
-viewScore : Score -> Html Msg
+viewScore : Score -> Html IndexMsg
 viewScore score =
     case score of
         Score user tally ->
@@ -426,7 +494,7 @@ toString user =
             str
 
 
-viewUser : User -> Html Msg
+viewUser : User -> Html IndexMsg
 viewUser user =
     div
         [ class "font-light text-sm p-1"
@@ -449,12 +517,12 @@ viewStatus status =
             div [] []
 
 
-quizContainerStyle : Html.Attribute Msg
+quizContainerStyle : Html.Attribute msg
 quizContainerStyle =
     class "max-w-sm pb-2 shadow-lg my-5 mx-2 rounded bg-gray-100"
 
 
-viewQuiz : Quiz -> Html Msg
+viewQuiz : Quiz -> Html IndexMsg
 viewQuiz quiz =
     let
         previous =
@@ -508,7 +576,7 @@ viewQuiz quiz =
                         ]
 
 
-viewRemaining : List Question -> Html Msg
+viewRemaining : List Question -> Html IndexMsg
 viewRemaining remaining =
     let
         n =
@@ -530,12 +598,12 @@ plural n =
         "question"
 
 
-primaryButtonStyle : Html.Attribute Msg
+primaryButtonStyle : Html.Attribute IndexMsg
 primaryButtonStyle =
     class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
 
 
-previousButton : Html Msg
+previousButton : Html IndexMsg
 previousButton =
     button
         [ class "bg-white border border-blue-500 hover:bg-blue-700 text-near-black py-2 px-4 rounded mx-2 my-2"
@@ -544,7 +612,7 @@ previousButton =
         [ text "Go back" ]
 
 
-nextButton : Bool -> Html Msg
+nextButton : Bool -> Html IndexMsg
 nextButton notAnswered =
     button
         [ primaryButtonStyle
@@ -554,7 +622,7 @@ nextButton notAnswered =
         [ text "Next" ]
 
 
-finishButton : Html Msg
+finishButton : Html IndexMsg
 finishButton =
     button
         [ primaryButtonStyle
