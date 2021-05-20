@@ -7,26 +7,11 @@ const port = process.env.PORT || 8080
 
 let leaderboard = []
 
-app.use(express.static(__dirname + "/static"))
-
-// View engine
-app.set("view engine", "ejs")
+app.use(express.static(__dirname + "/dist"))
 
 
 let indexHandler = (req, res) => {
-    let flags = {}
-    // res.sendFile(path.join(__dirname, "index.html"))
-    let baseUrl
-    if (process.env.NODE_ENV === "production") {
-        baseUrl = "https://sheltered-basin-70535.herokuapp.com"
-    } else {
-        baseUrl = "http://localhost:8080"
-    }
-    res.render(path.join(__dirname, "index.ejs"), {
-        title: "Quiz",
-        baseUrl,
-        flags: JSON.stringify(flags)
-    })
+    res.sendFile(path.join(__dirname, "dist", "index.html"))
 }
 app.get("/", indexHandler)
 app.get("/quiz", indexHandler)
@@ -38,9 +23,15 @@ let httpServer = http.createServer(app)
 // Socket.io
 const io = new Server(httpServer)
 io.on("connection", socket => {
-    console.log("a user connected")
-    socket.on("score", msg => {
-        let { payload } = JSON.parse(msg)
+    console.log("A user connected")
+
+    // Listen for answer
+    socket.on("answer", msg => {
+        console.log(msg)
+    })
+
+    // Listen for score
+    socket.on("score", payload => {
         leaderboard.push(payload)
         // Emit to everyone
         io.emit("leaderboard", leaderboard)

@@ -84,9 +84,6 @@ init value url key =
 
         session =
             fromKey key
-
-        _ =
-            Debug.log "route" route
     in
     case route of
         Route.Index ->

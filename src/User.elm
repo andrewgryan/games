@@ -1,6 +1,7 @@
 module User exposing (..)
 
-import Json.Decode as D
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 
@@ -30,9 +31,18 @@ loggedIn str =
 -- DECODE
 
 
-decoder : D.Decoder User
+decoder : Decoder User
 decoder =
-    D.map LoggedIn D.string
+    Decode.map LoggedIn Decode.string
+
+
+
+-- ENCODE
+
+
+encode : User -> Encode.Value
+encode user =
+    Encode.string (toString user)
 
 
 toString : User -> String
