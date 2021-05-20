@@ -8,29 +8,7 @@ module Main exposing (main, portDecoder)
 
 import Browser
 import Browser.Navigation exposing (Key)
-import Html
-    exposing
-        ( Html
-        , button
-        , div
-        , h1
-        , input
-        , label
-        , li
-        , span
-        , text
-        , ul
-        )
-import Html.Attributes
-    exposing
-        ( attribute
-        , class
-        , disabled
-        , placeholder
-        , type_
-        , value
-        )
-import Html.Events exposing (on, onClick, onInput)
+import Html exposing (Html)
 import Json.Decode as D
 import Json.Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)

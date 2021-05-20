@@ -1,6 +1,8 @@
 module Page.New exposing (Model, Msg, init, update, view)
 
+import Helper exposing (classes)
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 
 
@@ -48,7 +50,91 @@ view : Model -> Html Msg
 view model =
     case model of
         Draft str ->
-            div []
-                [ text str
-                , input [ onInput DraftChanged ] []
+            div
+                [ classes
+                    [ "grid"
+                    , "min-h-screen"
+                    , "bg-gray-200"
+                    , "justify-center"
+                    , "content-center"
+                    ]
                 ]
+                [ div
+                    [ classes
+                        [ "p-4"
+                        , "bg-white"
+                        , "rounded"
+                        , "shadow-lg"
+                        ]
+                    ]
+                    [ viewInput "Statement"
+                    , div
+                        [ classes []
+                        ]
+                        [ label [] [ text "Options" ]
+                        , viewOption
+                        , viewOption
+                        , viewOption
+                        , button
+                            [ classes
+                                [ "bg-green-300"
+                                , "p-2"
+                                , "rounded"
+                                , "w-50"
+                                ]
+                            ]
+                            [ text "+" ]
+                        ]
+                    ]
+                ]
+
+
+viewInput : String -> Html Msg
+viewInput str =
+    div
+        [ classes
+            [ "py-2"
+            ]
+        ]
+        [ label
+            [ classes
+                [ "font-sm"
+                ]
+            ]
+            [ text str ]
+        , input
+            [ classes
+                [ "block"
+                , "border"
+                , "border-solid-gray"
+                , "my-1"
+                ]
+            , onInput DraftChanged
+            ]
+            []
+        ]
+
+
+viewOption : Html Msg
+viewOption =
+    div
+        [ classes
+            []
+        ]
+        [ input
+            [ classes
+                [ "border"
+                , "border-solid-gray"
+                , "my-1"
+                , "mr-2"
+                ]
+            , onInput DraftChanged
+            ]
+            []
+        , input
+            [ classes
+                []
+            , type_ "checkbox"
+            ]
+            []
+        ]
