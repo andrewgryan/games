@@ -1,11 +1,13 @@
-module Outgoing exposing (encode, save)
+module Outgoing exposing (answer, encode, save)
 
-import Json.Encode exposing (string)
+import Json.Encode as Encode exposing (string)
 import Score exposing (Score)
+import User exposing (User)
 
 
 type Outgoing
     = SaveScore Score
+    | Answer User
 
 
 save : Score -> Outgoing
@@ -13,13 +15,30 @@ save score =
     SaveScore score
 
 
+answer : User -> Outgoing
+answer user =
+    Answer user
+
+
 encode : Outgoing -> String
 encode outgoing =
     case outgoing of
+        Answer user ->
+            Encode.encode 0
+                (Encode.object
+                    [ ( "type", Encode.string "answer" )
+                    , ( "payload"
+                      , Encode.object
+                            [ ( "user", User.encode user )
+                            ]
+                      )
+                    ]
+                )
+
         SaveScore score ->
-            Json.Encode.encode 0
-                (Json.Encode.object
-                    [ ( "type", Json.Encode.string "score" )
+            Encode.encode 0
+                (Encode.object
+                    [ ( "type", Encode.string "score" )
                     , ( "payload", Score.encode score )
                     ]
                 )

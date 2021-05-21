@@ -162,7 +162,13 @@ update msg model =
             )
 
         NextQuestion ->
-            ( { model | quiz = Quiz.nextQuestion model.quiz }, Cmd.none )
+            let
+                cmd =
+                    Outgoing.answer model.user
+                        |> Outgoing.encode
+                        |> sendMessage
+            in
+            ( { model | quiz = Quiz.nextQuestion model.quiz }, cmd )
 
         PreviousQuestion ->
             ( { model | quiz = Quiz.previousQuestion model.quiz }, Cmd.none )

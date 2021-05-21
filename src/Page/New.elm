@@ -67,7 +67,15 @@ view model =
                         , "shadow-lg"
                         ]
                     ]
-                    [ viewInput "Statement"
+                    [ h1
+                        [ classes
+                            [ "font-bold"
+                            , "pb-4"
+                            , "text-xl"
+                            ]
+                        ]
+                        [ text "Hello, Vite" ]
+                    , viewInput "Statement"
                     , div
                         [ classes []
                         ]
@@ -77,7 +85,7 @@ view model =
                         , viewOption
                         , button
                             [ classes
-                                [ "bg-green-300"
+                                [ "bg-green-700"
                                 , "p-2"
                                 , "rounded"
                                 , "w-50"

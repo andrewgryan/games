@@ -3,17 +3,17 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
-        <title><%= title %></title>
-        <link rel="stylesheet" href="tailwind.css" type="text/css" media="all">
+        <title>Quiz</title>
     </head>
     <body>
         <div id="root"></div>
-        <script src="index.js" charset="utf-8"></script>
-        <script src="<%= baseUrl %>/socket.io/socket.io.js" charset="utf-8"></script>
-        <script>
+        <script src="/socket.io/socket.io.js" charset="utf-8"></script>
+        <script type="module">
+            import { Elm } from "./src/Main.elm"
+            import "./index.css"
+
             const app = Elm.Main.init({
-                node: document.getElementById("root"),
-                flags: <%- flags %>
+                node: document.getElementById("root")
             })
 
             // Socket.io client
@@ -24,7 +24,8 @@
             // Connect Elm to/from WebSocket
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", message)
-                socket.emit("score", message)
+                let { type, payload } = JSON.parse(message)
+                socket.emit(type, payload)
             })
             socket.on("leaderboard", (leaderboard) => {
                 console.log("RECV FROM SERVER", leaderboard)
