@@ -141,7 +141,7 @@ update msg model =
                 | game = Playing
                 , user = User.loggedIn model.userDraft
               }
-            , Browser.Navigation.pushUrl model.key "/quiz"
+            , Cmd.none
             )
 
         FinishQuiz ->
