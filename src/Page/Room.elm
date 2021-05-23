@@ -9,15 +9,24 @@ type Msg
     = Msg
 
 
-type Model
-    = Model
+type alias Model =
+    ID
 
 
-init : Model
-init =
-    Model
+type ID
+    = ID Int
+
+
+fromInt : Int -> ID
+fromInt n =
+    ID n
+
+
+init : Int -> Model
+init n =
+    fromInt n
 
 
 view : Model -> Html Msg
-view model =
-    text "Welcome to Room 101!"
+view (ID n) =
+    text ("Welcome to Room " ++ String.fromInt n ++ "!")

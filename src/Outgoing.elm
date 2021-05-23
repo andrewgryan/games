@@ -8,7 +8,6 @@ import User exposing (User)
 type Outgoing
     = SaveScore Score
     | Answer User
-    | JoinRoom User
 
 
 save : Score -> Outgoing
@@ -21,27 +20,9 @@ answer user =
     Answer user
 
 
-joinRoom : User -> Outgoing
-joinRoom user =
-    JoinRoom user
-
-
 encode : Outgoing -> String
 encode outgoing =
     case outgoing of
-        JoinRoom user ->
-            Encode.encode 0
-                (Encode.object
-                    [ ( "type", Encode.string "join" )
-                    , ( "payload"
-                      , Encode.object
-                            [ ( "user", User.encode user )
-                            , ( "room", Encode.string "101" )
-                            ]
-                      )
-                    ]
-                )
-
         Answer user ->
             Encode.encode 0
                 (Encode.object

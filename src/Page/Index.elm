@@ -7,6 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
+import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
 import Page.Room
@@ -113,6 +114,13 @@ gotLeaderBoard board =
 -- UPDATE
 
 
+joinRoomPayload : Int -> Encode.Value
+joinRoomPayload n =
+    Encode.object
+        [ ( "room", Encode.int n )
+        ]
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -128,8 +136,15 @@ update msg model =
                 url =
                     Route.toString (Room n)
 
+                portCmd =
+                    Ports.encode "join" (joinRoomPayload n)
+                        |> Ports.sendMessage
+
                 cmd =
-                    Navigation.pushUrl key url
+                    Cmd.batch
+                        [ Navigation.pushUrl key url
+                        , portCmd
+                        ]
             in
             ( model, cmd )
 
@@ -154,17 +169,12 @@ update msg model =
             let
                 user =
                     User.loggedIn model.userDraft
-
-                cmd =
-                    Outgoing.joinRoom user
-                        |> Outgoing.encode
-                        |> sendMessage
             in
             ( { model
                 | game = Playing
                 , user = user
               }
-            , cmd
+            , Cmd.none
             )
 
         FinishQuiz ->
@@ -212,7 +222,7 @@ view : Model -> Html Msg
 view model =
     case model.game of
         WaitingToSelectRoom ->
-            viewRooms (GotRoom model.key 101)
+            viewRooms (GotRoom model.key)
 
         WaitingToPlay ->
             viewStartPage model.userDraft
@@ -231,7 +241,7 @@ view model =
                 ]
 
 
-viewRooms : Msg -> Html Msg
+viewRooms : (Int -> Msg) -> Html Msg
 viewRooms toMsg =
     div []
         [ button
@@ -241,9 +251,19 @@ viewRooms toMsg =
                 , "p-4"
                 , "shadow-lg"
                 ]
-            , onClick toMsg
+            , onClick (toMsg 101)
             ]
             [ text "Room 101" ]
+        , button
+            [ classes
+                [ "bg-green-100"
+                , "hover:bg-green-300"
+                , "p-4"
+                , "shadow-lg"
+                ]
+            , onClick (toMsg 42)
+            ]
+            [ text "Room 42" ]
         ]
 
 

@@ -15,8 +15,6 @@ import Url.Parser as Parser
 
 type Route
     = Index
-    | Quiz
-    | New
     | Room Int
 
 
@@ -29,8 +27,6 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ map Index top
-        , map Quiz (s "quiz")
-        , map New (s "new")
         , map Room (s "room" </> int)
         ]
 
@@ -39,12 +35,6 @@ toString : Route -> String
 toString route =
     case route of
         Index ->
-            "/"
-
-        Quiz ->
-            "/"
-
-        New ->
             "/"
 
         Room n ->

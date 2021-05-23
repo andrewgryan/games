@@ -100,22 +100,7 @@ init value url key =
             let
                 -- TODO support this route
                 page =
-                    RoomPage Room.init
-            in
-            ( Model session page, Cmd.none )
-
-        Route.New ->
-            let
-                page =
-                    NewPage New.init
-            in
-            ( Model session page, Cmd.none )
-
-        Route.Quiz ->
-            -- TODO support this route
-            let
-                page =
-                    NewPage New.init
+                    RoomPage (Room.init n)
             in
             ( Model session page, Cmd.none )
 
@@ -165,16 +150,10 @@ update msg (Model session page) =
                     in
                     ( Model session nextPage, Cmd.none )
 
-                Quiz ->
-                    ( model, Cmd.none )
-
-                New ->
-                    ( model, Cmd.none )
-
                 Room n ->
                     let
                         nextPage =
-                            RoomPage Room.init
+                            RoomPage (Room.init n)
                     in
                     ( Model session nextPage, Cmd.none )
 
