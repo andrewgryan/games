@@ -1,16 +1,18 @@
 module Page.Index exposing (..)
 
-import Browser.Navigation exposing (Key)
+import Browser.Navigation as Navigation exposing (Key)
 import Container
-import Helper exposing (ifIsEnter)
+import Helper exposing (classes, ifIsEnter)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
+import Page.Room
 import Ports exposing (sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
+import Route exposing (Route(..))
 import Score exposing (Score)
 import Url exposing (Url)
 import User exposing (User)
@@ -21,7 +23,8 @@ import User exposing (User)
 
 
 type Game
-    = WaitingToPlay
+    = WaitingToSelectRoom
+    | WaitingToPlay
     | Playing
     | ViewingResults
 
@@ -52,7 +55,7 @@ init key url =
     , userDraft = ""
 
     -- QUIZ
-    , game = WaitingToPlay
+    , game = WaitingToSelectRoom
     , leaderBoard =
         LeaderBoard.empty
     , quiz = Quiz.first
@@ -75,7 +78,7 @@ type alias Model =
     , leaderBoard : LeaderBoard
 
     -- Navigation
-    , key : Browser.Navigation.Key
+    , key : Navigation.Key
     , url : Url.Url
     }
 
@@ -99,6 +102,8 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+      -- NAVIGATE
+    | GotRoom Navigation.Key Int
 
 
 gotLeaderBoard : LeaderBoard -> Msg
@@ -119,6 +124,17 @@ update msg model =
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
 
+        -- NAVIGATE
+        GotRoom key n ->
+            let
+                url =
+                    Route.toString (Room n)
+
+                cmd =
+                    Navigation.pushUrl key url
+            in
+            ( model, cmd )
+
         -- USER
         UserSend ->
             ( { model
@@ -137,11 +153,20 @@ update msg model =
 
         -- QUIZ
         StartQuiz ->
+            let
+                user =
+                    User.loggedIn model.userDraft
+
+                cmd =
+                    Outgoing.joinRoom user
+                        |> Outgoing.encode
+                        |> sendMessage
+            in
             ( { model
                 | game = Playing
-                , user = User.loggedIn model.userDraft
+                , user = user
               }
-            , Cmd.none
+            , cmd
             )
 
         FinishQuiz ->
@@ -188,6 +213,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     case model.game of
+        WaitingToSelectRoom ->
+            viewRooms (GotRoom model.key 101)
+
         WaitingToPlay ->
             viewStartPage model.userDraft
 
@@ -203,6 +231,22 @@ view model =
                 [ viewError model.errorMessage
                 , LeaderBoard.view model.leaderBoard
                 ]
+
+
+viewRooms : Msg -> Html Msg
+viewRooms toMsg =
+    div []
+        [ button
+            [ classes
+                [ "bg-green-100"
+                , "hover:bg-green-300"
+                , "p-4"
+                , "shadow-lg"
+                ]
+            , onClick toMsg
+            ]
+            [ text "Room 101" ]
+        ]
 
 
 viewStartPage : String -> Html Msg

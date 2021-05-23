@@ -25,9 +25,14 @@ const io = new Server(httpServer)
 io.on("connection", socket => {
     console.log("A user connected")
 
+    // Listen for user join
+    socket.on("join", msg => {
+        console.log("join: ", msg)
+    })
+
     // Listen for answer
     socket.on("answer", msg => {
-        console.log(msg)
+        console.log("answer: ", msg)
     })
 
     // Listen for score

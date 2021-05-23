@@ -14,6 +14,7 @@ import Json.Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
 import Page.Index as Index
 import Page.New as New
+import Page.Room as Room
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
 import Score exposing (Score)
@@ -48,6 +49,7 @@ type Model
 
 type Page
     = IndexPage Index.Model
+    | RoomPage Room.Model
     | NewPage New.Model
 
 
@@ -58,6 +60,7 @@ type Page
 type Msg
     = IndexMsg Index.Msg
     | NewMsg New.Msg
+    | RoomMsg Room.Msg
       -- PORT
     | Recv Value
       -- NAVIGATION
@@ -90,6 +93,14 @@ init value url key =
             let
                 page =
                     IndexPage (Index.init key url)
+            in
+            ( Model session page, Cmd.none )
+
+        Route.Room n ->
+            let
+                -- TODO support this route
+                page =
+                    RoomPage (Room.init key url)
             in
             ( Model session page, Cmd.none )
 
@@ -205,6 +216,9 @@ viewBody (Model key page) =
     case page of
         IndexPage model ->
             Html.map IndexMsg (Index.view model)
+
+        RoomPage model ->
+            Html.map RoomMsg (Room.view model)
 
         NewPage model ->
             Html.map NewMsg (New.view model)

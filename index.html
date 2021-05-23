@@ -25,6 +25,7 @@
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", message)
                 let { type, payload } = JSON.parse(message)
+                console.log(message)
                 socket.emit(type, payload)
             })
             socket.on("leaderboard", (leaderboard) => {
