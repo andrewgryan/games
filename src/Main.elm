@@ -92,7 +92,7 @@ init value url key =
         Route.Index ->
             let
                 page =
-                    IndexPage (Index.init key url)
+                    IndexPage (Index.init key)
             in
             ( Model session page, Cmd.none )
 
@@ -100,7 +100,7 @@ init value url key =
             let
                 -- TODO support this route
                 page =
-                    RoomPage (Room.init key url)
+                    RoomPage Room.init
             in
             ( Model session page, Cmd.none )
 
@@ -153,7 +153,30 @@ update msg (Model session page) =
                     ( model, Browser.Navigation.load href )
 
         ( UrlChanged url, _ ) ->
-            ( model, Cmd.none )
+            let
+                route =
+                    Route.fromUrl url
+            in
+            case route of
+                Index ->
+                    let
+                        nextPage =
+                            IndexPage (Index.init key)
+                    in
+                    ( Model session nextPage, Cmd.none )
+
+                Quiz ->
+                    ( model, Cmd.none )
+
+                New ->
+                    ( model, Cmd.none )
+
+                Room n ->
+                    let
+                        nextPage =
+                            RoomPage Room.init
+                    in
+                    ( Model session nextPage, Cmd.none )
 
         -- PORT
         ( Recv value, IndexPage subModel ) ->

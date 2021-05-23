@@ -13,11 +13,11 @@ type Model
     = Model
 
 
-init : Navigation.Key -> Url.Url -> Model
-init key url =
+init : Model
+init =
     Model
 
 
 view : Model -> Html Msg
 view model =
-    text ""
+    text "Welcome to Room 101!"

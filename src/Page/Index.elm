@@ -43,10 +43,9 @@ type Status
 -- INIT
 
 
-init : Key -> Url -> Model
-init key url =
+init : Key -> Model
+init key =
     { key = key
-    , url = url
     , draft = ""
     , messages = []
     , status = NotStarted
@@ -79,7 +78,6 @@ type alias Model =
 
     -- Navigation
     , key : Navigation.Key
-    , url : Url.Url
     }
 
 
