@@ -243,12 +243,20 @@ view model =
 
 viewRooms : (Int -> Msg) -> Html Msg
 viewRooms toMsg =
-    div []
+    div
+        [ classes
+            [ "flex"
+            , "flex-col"
+            , "justify-center"
+            , "h-screen"
+            ]
+        ]
         [ button
             [ classes
                 [ "bg-green-100"
                 , "hover:bg-green-300"
                 , "p-4"
+                , "my-4"
                 , "shadow-lg"
                 ]
             , onClick (toMsg 101)
@@ -259,6 +267,7 @@ viewRooms toMsg =
                 [ "bg-green-100"
                 , "hover:bg-green-300"
                 , "p-4"
+                , "my-4"
                 , "shadow-lg"
                 ]
             , onClick (toMsg 42)

@@ -50,7 +50,6 @@ type Model
 type Page
     = IndexPage Index.Model
     | RoomPage Room.Model
-    | NewPage New.Model
 
 
 
@@ -98,7 +97,6 @@ init value url key =
 
         Route.Room n ->
             let
-                -- TODO support this route
                 page =
                     RoomPage (Room.init n)
             in
@@ -173,17 +171,23 @@ update msg (Model session page) =
         -- PAGE
         ( IndexMsg subMsg, IndexPage subModel ) ->
             let
-                ( indexModel, cmd ) =
+                ( nextModel, nextCmd ) =
                     Index.update subMsg subModel
-            in
-            ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
 
-        ( NewMsg subMsg, NewPage subModel ) ->
-            let
-                ( newModel, cmd ) =
-                    New.update subMsg subModel
+                nextPage =
+                    IndexPage nextModel
             in
-            ( Model session (NewPage newModel), Cmd.map NewMsg cmd )
+            ( Model session nextPage, Cmd.map IndexMsg nextCmd )
+
+        ( RoomMsg subMsg, RoomPage subModel ) ->
+            let
+                ( nextModel, nextCmd ) =
+                    Room.update subMsg subModel
+
+                nextPage =
+                    RoomPage nextModel
+            in
+            ( Model session nextPage, Cmd.map RoomMsg nextCmd )
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -199,10 +203,6 @@ portDecoder =
 
 
 
--- D.oneOf
---     [ D.field "data" D.string |> D.andThen (\s -> D.succeed (Ack s))
---     , D.field "error" D.string |> D.andThen (\s -> D.succeed (Nack s))
---     ]
 -- VIEW
 
 
@@ -221,9 +221,6 @@ viewBody (Model key page) =
 
         RoomPage model ->
             Html.map RoomMsg (Room.view model)
-
-        NewPage model ->
-            Html.map NewMsg (New.view model)
 
 
 
