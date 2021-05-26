@@ -15,7 +15,7 @@ let indexHandler = (req, res) => {
 }
 app.get("/", indexHandler)
 app.get("/quiz", indexHandler)
-app.get("/new", indexHandler)
+app.get("/room/*", indexHandler)
 
 
 let httpServer = http.createServer(app)
