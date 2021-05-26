@@ -96,7 +96,14 @@ init value url key =
         Route.Room n ->
             let
                 page =
-                    RoomPage (Room.init n)
+                    RoomPage (Room.init key n)
+            in
+            ( Model session page, Cmd.none )
+
+        Route.Play n ->
+            let
+                page =
+                    RoomPage (Room.init key n)
             in
             ( Model session page, Cmd.none )
 
@@ -149,7 +156,14 @@ update msg (Model session page) =
                 Room n ->
                     let
                         nextPage =
-                            RoomPage (Room.init n)
+                            RoomPage (Room.init key n)
+                    in
+                    ( Model session nextPage, Cmd.none )
+
+                Play n ->
+                    let
+                        nextPage =
+                            RoomPage (Room.init key n)
                     in
                     ( Model session nextPage, Cmd.none )
 

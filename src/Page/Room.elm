@@ -1,21 +1,24 @@
 module Page.Room exposing (..)
 
-import Browser.Navigation as Navigation
+import Browser.Navigation as Navigation exposing (Key)
 import Header
 import Helper exposing (classes)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Route exposing (Route(..))
 import Url
 
 
 type Msg
     = GotDraft String
+    | GoTo Route
 
 
 type alias Model =
     { id : ID
     , userName : String
+    , key : Key
     }
 
 
@@ -46,9 +49,12 @@ toString (ID n) =
 -- INIT
 
 
-init : Int -> Model
-init n =
-    { id = fromInt n, userName = "" }
+init : Key -> Int -> Model
+init key n =
+    { id = fromInt n
+    , userName = ""
+    , key = key
+    }
 
 
 
@@ -61,6 +67,9 @@ update msg model =
         GotDraft str ->
             ( { model | userName = str }, Cmd.none )
 
+        GoTo route ->
+            ( model, Navigation.pushUrl model.key (Route.toString route) )
+
 
 
 -- VIEW
@@ -68,6 +77,10 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        id =
+            toInt model.id
+    in
     div
         [ classes
             [ "bg-white"
@@ -118,13 +131,14 @@ view model =
             [ text (greet model.id model.userName) ]
         , button
             [ classes
-                [ "bg-blue-600"
+                [ "bg-teal-600"
                 , "text-white"
                 , "uppercase"
                 , "m-4"
                 , "p-4"
                 , "box-border"
                 ]
+            , onClick (GoTo (Play id))
             ]
             [ text "Start Quiz"
             ]
@@ -139,7 +153,7 @@ greet roomId userName =
     in
     case userName of
         "" ->
-            "Welcome to Room " ++ id ++ "!"
+            "Room " ++ id
 
         _ ->
             "Hi " ++ userName ++ ", nice to meet you..."
