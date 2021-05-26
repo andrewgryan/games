@@ -4,7 +4,7 @@
 -}
 
 
-module Main exposing (main, portDecoder)
+module Main exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
@@ -13,7 +13,6 @@ import Json.Decode as D
 import Json.Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
 import Page.Index as Index
-import Page.New as New
 import Page.Room as Room
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
@@ -58,7 +57,6 @@ type Page
 
 type Msg
     = IndexMsg Index.Msg
-    | NewMsg New.Msg
     | RoomMsg Room.Msg
       -- PORT
     | Recv Value

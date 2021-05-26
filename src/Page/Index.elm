@@ -2,6 +2,7 @@ module Page.Index exposing (..)
 
 import Browser.Navigation as Navigation exposing (Key)
 import Container
+import Header
 import Helper exposing (classes, ifIsEnter)
 import Heroicons exposing (menu, pencil)
 import Html exposing (..)
@@ -251,34 +252,7 @@ viewRooms toMsg =
             ]
         ]
         [ -- NAV
-          div
-            [ classes
-                [ "bg-teal-300"
-                , "py-2"
-                , "px-4"
-                , "flex"
-                , "flex-row"
-                , "justify-between"
-                , "items-center"
-                , "text-gray-700"
-                , "shadow-md"
-                ]
-            ]
-            [ div
-                [ classes
-                    [ "text-2xl"
-                    , "flex"
-                    , "flex-row"
-                    , "items-center"
-                    ]
-                ]
-                [ Heroicons.pencil
-                , text "The Quiet Ryans"
-                ]
-            , div [ classes [ "h-6", "w-6" ] ]
-                [ Heroicons.menu
-                ]
-            ]
+          Header.view
 
         -- CONTENT
         , div

@@ -1,6 +1,7 @@
 module Page.Room exposing (..)
 
 import Browser.Navigation as Navigation
+import Header
 import Helper exposing (classes)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -77,16 +78,7 @@ view model =
             , "justify-between"
             ]
         ]
-        [ div
-            [ classes
-                [ "bg-gray-900"
-                , "text-white"
-                , "text-xl"
-                , "text-center"
-                , "p-4"
-                ]
-            ]
-            [ text "Header" ]
+        [ Header.view
         , div
             [ classes
                 [ "bg-white"
