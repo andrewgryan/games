@@ -3,6 +3,7 @@ module Page.Index exposing (..)
 import Browser.Navigation as Navigation exposing (Key)
 import Container
 import Helper exposing (classes, ifIsEnter)
+import Heroicons exposing (menu, pencil)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
@@ -245,34 +246,113 @@ viewRooms : (Int -> Msg) -> Html Msg
 viewRooms toMsg =
     div
         [ classes
-            [ "flex"
-            , "flex-col"
-            , "justify-center"
+            [ "flex flex-col"
             , "h-screen"
             ]
         ]
-        [ button
+        [ -- NAV
+          div
             [ classes
-                [ "bg-green-100"
-                , "hover:bg-green-300"
-                , "p-4"
-                , "my-4"
-                , "shadow-lg"
+                [ "bg-teal-300"
+                , "py-2"
+                , "px-4"
+                , "flex"
+                , "flex-row"
+                , "justify-between"
+                , "items-center"
+                , "text-gray-700"
+                , "shadow-md"
                 ]
-            , onClick (toMsg 101)
             ]
-            [ text "Room 101" ]
-        , button
+            [ div
+                [ classes
+                    [ "text-2xl"
+                    , "flex"
+                    , "flex-row"
+                    , "items-center"
+                    ]
+                ]
+                [ Heroicons.pencil
+                , text "The Quiet Ryans"
+                ]
+            , div [ classes [ "h-6", "w-6" ] ]
+                [ Heroicons.menu
+                ]
+            ]
+
+        -- CONTENT
+        , div
             [ classes
-                [ "bg-green-100"
-                , "hover:bg-green-300"
+                [ "flex-auto"
                 , "p-4"
-                , "my-4"
-                , "shadow-lg"
+                , "flex"
+                , "flex-col"
+                , "space-y-4"
                 ]
-            , onClick (toMsg 42)
             ]
-            [ text "Room 42" ]
+            [ div
+                [ classes
+                    [ "text-xl"
+                    , "py-4"
+                    ]
+                ]
+                [ text "Q. Odd one out?" ]
+
+            -- ANSWERS
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Giraffe" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Tiger" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Banana" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Dolphin" ]
+
+            -- CONTROLS
+            , div
+                [ classes
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-end"
+                    ]
+                ]
+                [ div
+                    [ classes
+                        [ "bg-teal-300"
+                        , "p-4"
+                        , "rounded-full"
+                        , "shadow"
+                        , "text-gray-700"
+                        ]
+                    ]
+                    [ Heroicons.chevronRight
+                    ]
+                ]
+            ]
         ]
 
 
