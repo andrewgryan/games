@@ -14,6 +14,7 @@ import Json.Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
 import Page.Index as Index
 import Page.New as New
+import Page.Room as Room
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
 import Score exposing (Score)
@@ -48,7 +49,7 @@ type Model
 
 type Page
     = IndexPage Index.Model
-    | NewPage New.Model
+    | RoomPage Room.Model
 
 
 
@@ -58,6 +59,7 @@ type Page
 type Msg
     = IndexMsg Index.Msg
     | NewMsg New.Msg
+    | RoomMsg Room.Msg
       -- PORT
     | Recv Value
       -- NAVIGATION
@@ -89,22 +91,14 @@ init value url key =
         Route.Index ->
             let
                 page =
-                    IndexPage (Index.init key url)
+                    IndexPage (Index.init key)
             in
             ( Model session page, Cmd.none )
 
-        Route.New ->
+        Route.Room n ->
             let
                 page =
-                    NewPage New.init
-            in
-            ( Model session page, Cmd.none )
-
-        Route.Quiz ->
-            -- TODO support this route
-            let
-                page =
-                    NewPage New.init
+                    RoomPage (Room.init n)
             in
             ( Model session page, Cmd.none )
 
@@ -142,7 +136,24 @@ update msg (Model session page) =
                     ( model, Browser.Navigation.load href )
 
         ( UrlChanged url, _ ) ->
-            ( model, Cmd.none )
+            let
+                route =
+                    Route.fromUrl url
+            in
+            case route of
+                Index ->
+                    let
+                        nextPage =
+                            IndexPage (Index.init key)
+                    in
+                    ( Model session nextPage, Cmd.none )
+
+                Room n ->
+                    let
+                        nextPage =
+                            RoomPage (Room.init n)
+                    in
+                    ( Model session nextPage, Cmd.none )
 
         -- PORT
         ( Recv value, IndexPage subModel ) ->
@@ -160,17 +171,23 @@ update msg (Model session page) =
         -- PAGE
         ( IndexMsg subMsg, IndexPage subModel ) ->
             let
-                ( indexModel, cmd ) =
+                ( nextModel, nextCmd ) =
                     Index.update subMsg subModel
-            in
-            ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
 
-        ( NewMsg subMsg, NewPage subModel ) ->
-            let
-                ( newModel, cmd ) =
-                    New.update subMsg subModel
+                nextPage =
+                    IndexPage nextModel
             in
-            ( Model session (NewPage newModel), Cmd.map NewMsg cmd )
+            ( Model session nextPage, Cmd.map IndexMsg nextCmd )
+
+        ( RoomMsg subMsg, RoomPage subModel ) ->
+            let
+                ( nextModel, nextCmd ) =
+                    Room.update subMsg subModel
+
+                nextPage =
+                    RoomPage nextModel
+            in
+            ( Model session nextPage, Cmd.map RoomMsg nextCmd )
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -186,10 +203,6 @@ portDecoder =
 
 
 
--- D.oneOf
---     [ D.field "data" D.string |> D.andThen (\s -> D.succeed (Ack s))
---     , D.field "error" D.string |> D.andThen (\s -> D.succeed (Nack s))
---     ]
 -- VIEW
 
 
@@ -206,8 +219,8 @@ viewBody (Model key page) =
         IndexPage model ->
             Html.map IndexMsg (Index.view model)
 
-        NewPage model ->
-            Html.map NewMsg (New.view model)
+        RoomPage model ->
+            Html.map RoomMsg (Room.view model)
 
 
 

@@ -1,4 +1,4 @@
-module Outgoing exposing (answer, encode, save)
+module Outgoing exposing (..)
 
 import Json.Encode as Encode exposing (string)
 import Score exposing (Score)

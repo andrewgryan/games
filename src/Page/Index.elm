@@ -1,16 +1,20 @@
 module Page.Index exposing (..)
 
-import Browser.Navigation exposing (Key)
+import Browser.Navigation as Navigation exposing (Key)
 import Container
-import Helper exposing (ifIsEnter)
+import Helper exposing (classes, ifIsEnter)
+import Heroicons exposing (menu, pencil)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
+import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
+import Page.Room
 import Ports exposing (sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
+import Route exposing (Route(..))
 import Score exposing (Score)
 import Url exposing (Url)
 import User exposing (User)
@@ -21,7 +25,8 @@ import User exposing (User)
 
 
 type Game
-    = WaitingToPlay
+    = WaitingToSelectRoom
+    | WaitingToPlay
     | Playing
     | ViewingResults
 
@@ -40,10 +45,9 @@ type Status
 -- INIT
 
 
-init : Key -> Url -> Model
-init key url =
+init : Key -> Model
+init key =
     { key = key
-    , url = url
     , draft = ""
     , messages = []
     , status = NotStarted
@@ -52,7 +56,7 @@ init key url =
     , userDraft = ""
 
     -- QUIZ
-    , game = WaitingToPlay
+    , game = WaitingToSelectRoom
     , leaderBoard =
         LeaderBoard.empty
     , quiz = Quiz.first
@@ -75,8 +79,7 @@ type alias Model =
     , leaderBoard : LeaderBoard
 
     -- Navigation
-    , key : Browser.Navigation.Key
-    , url : Url.Url
+    , key : Navigation.Key
     }
 
 
@@ -99,6 +102,8 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+      -- NAVIGATE
+    | GotRoom Navigation.Key Int
 
 
 gotLeaderBoard : LeaderBoard -> Msg
@@ -110,6 +115,13 @@ gotLeaderBoard board =
 -- UPDATE
 
 
+joinRoomPayload : Int -> Encode.Value
+joinRoomPayload n =
+    Encode.object
+        [ ( "room", Encode.int n )
+        ]
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -118,6 +130,24 @@ update msg model =
 
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
+
+        -- NAVIGATE
+        GotRoom key n ->
+            let
+                url =
+                    Route.toString (Room n)
+
+                portCmd =
+                    Ports.encode "join" (joinRoomPayload n)
+                        |> Ports.sendMessage
+
+                cmd =
+                    Cmd.batch
+                        [ Navigation.pushUrl key url
+                        , portCmd
+                        ]
+            in
+            ( model, cmd )
 
         -- USER
         UserSend ->
@@ -137,9 +167,13 @@ update msg model =
 
         -- QUIZ
         StartQuiz ->
+            let
+                user =
+                    User.loggedIn model.userDraft
+            in
             ( { model
                 | game = Playing
-                , user = User.loggedIn model.userDraft
+                , user = user
               }
             , Cmd.none
             )
@@ -188,6 +222,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     case model.game of
+        WaitingToSelectRoom ->
+            viewRooms (GotRoom model.key)
+
         WaitingToPlay ->
             viewStartPage model.userDraft
 
@@ -203,6 +240,120 @@ view model =
                 [ viewError model.errorMessage
                 , LeaderBoard.view model.leaderBoard
                 ]
+
+
+viewRooms : (Int -> Msg) -> Html Msg
+viewRooms toMsg =
+    div
+        [ classes
+            [ "flex flex-col"
+            , "h-screen"
+            ]
+        ]
+        [ -- NAV
+          div
+            [ classes
+                [ "bg-teal-300"
+                , "py-2"
+                , "px-4"
+                , "flex"
+                , "flex-row"
+                , "justify-between"
+                , "items-center"
+                , "text-gray-700"
+                , "shadow-md"
+                ]
+            ]
+            [ div
+                [ classes
+                    [ "text-2xl"
+                    , "flex"
+                    , "flex-row"
+                    , "items-center"
+                    ]
+                ]
+                [ Heroicons.pencil
+                , text "The Quiet Ryans"
+                ]
+            , div [ classes [ "h-6", "w-6" ] ]
+                [ Heroicons.menu
+                ]
+            ]
+
+        -- CONTENT
+        , div
+            [ classes
+                [ "flex-auto"
+                , "p-4"
+                , "flex"
+                , "flex-col"
+                , "space-y-4"
+                ]
+            ]
+            [ div
+                [ classes
+                    [ "text-xl"
+                    , "py-4"
+                    ]
+                ]
+                [ text "Q. Odd one out?" ]
+
+            -- ANSWERS
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Giraffe" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Tiger" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Banana" ]
+            , div
+                [ classes
+                    [ "bg-gray-100"
+                    , "shadow"
+                    , "p-4"
+                    ]
+                ]
+                [ text "Dolphin" ]
+
+            -- CONTROLS
+            , div
+                [ classes
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-end"
+                    ]
+                ]
+                [ div
+                    [ classes
+                        [ "bg-teal-300"
+                        , "p-4"
+                        , "rounded-full"
+                        , "shadow"
+                        , "text-gray-700"
+                        ]
+                    ]
+                    [ Heroicons.chevronRight
+                    ]
+                ]
+            ]
+        ]
 
 
 viewStartPage : String -> Html Msg
