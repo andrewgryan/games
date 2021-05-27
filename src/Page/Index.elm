@@ -365,33 +365,61 @@ viewStartPage draftName =
         , class "h-screen"
         , class "flex"
         , class "flex-col"
+        , class "justify-between"
         ]
         [ Header.view
         , div
-            [ class "bg-white rounded px-8 pt-6 pb-8 mb-4"
-            , class "flex-auto"
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-col"
+                    , "justify-center"
+                    , "items-center"
+                    , "flex-grow"
+                    ]
             ]
             [ div
-                [ class "mb-4"
+                [ class "w-full"
+                , class "px-2"
                 ]
                 [ label
-                    [ class "block text-gray-700 text-sm font-bold mb-2"
+                    [ class <|
+                        String.join " " <|
+                            [ "block"
+                            , "text-gray-700"
+                            , "text-md"
+                            , "font-bold"
+                            , "mb-2"
+                            ]
                     ]
                     [ text "Enter name:" ]
                 , input
                     [ type_ "text"
-                    , placeholder "Write here"
+                    , placeholder "Enter text"
                     , onInput UserDraftChanged
                     , on "keydown" (ifIsEnter StartQuiz)
                     , value draftName
-                    , class "shadow appearence-none border rounded-w-full py-2 px-3"
+                    , class <|
+                        String.join " " <|
+                            [ "shadow"
+                            , "appearence-none"
+                            , "border"
+                            , "bg-gray-200"
+                            , "py-4"
+                            , "px-4"
+                            , "text-xl"
+                            , "w-full"
+                            ]
                     ]
                     []
                 ]
-            , if draftName /= "" then
+            ]
+        , div []
+            [ if draftName /= "" then
                 button
                     [ onClick StartQuiz
                     , primaryButtonStyle
+                    , class "w-full"
                     ]
                     [ text "Start Quiz!" ]
 
@@ -411,7 +439,6 @@ primaryButtonStyle =
             , "font-bold"
             , "p-4"
             , "py-6"
-            , "flex-grow"
             ]
 
 
@@ -502,6 +529,7 @@ nextButton : Bool -> Html Msg
 nextButton notAnswered =
     button
         [ primaryButtonStyle
+        , class "flex-grow"
         , onClick NextQuestion
         , disabled notAnswered
         ]
@@ -512,6 +540,7 @@ finishButton : Html Msg
 finishButton =
     button
         [ primaryButtonStyle
+        , class "flex-grow"
         , onClick FinishQuiz
         ]
         [ text "Finish" ]
