@@ -9,9 +9,10 @@ style =
     classes
         [ "max-w-sm"
         , "pb-2"
-        , "shadow-lg"
         , "my-5"
         , "mx-2"
-        , "rounded"
-        , "bg-gray-100"
+        , "flex-grow"
+        , "flex"
+        , "flex-col"
+        , "justify-between"
         ]

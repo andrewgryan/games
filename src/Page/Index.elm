@@ -230,11 +230,15 @@ view model =
             viewStartPage model.userDraft
 
         Playing ->
-            div []
+            div
+                [ class "flex"
+                , class "flex-col"
+                , class "h-screen"
+                ]
                 [ -- QUIZ
                   Header.view
-                , viewQuiz model.quiz
                 , viewUser model.user
+                , viewQuiz model.quiz
                 ]
 
         ViewingResults ->
@@ -395,15 +399,16 @@ viewQuiz quiz =
     case previous of
         [] ->
             div [ Container.style ]
-                [ Quiz.viewQuestion SelectAnswer question
+                [ -- Remaining questions info
+                  viewRemaining remaining
+
+                -- Questions
+                , Quiz.viewQuestion SelectAnswer question
 
                 -- Navigation buttons
                 , div [ class "flex justify-end" ]
                     [ nextButton (not (Quiz.answered question))
                     ]
-
-                -- Remaining questions info
-                , viewRemaining remaining
                 ]
 
         _ ->
@@ -421,16 +426,17 @@ viewQuiz quiz =
 
                 _ ->
                     div [ Container.style ]
-                        [ Quiz.viewQuestion SelectAnswer question
+                        [ -- Remaining questions info
+                          viewRemaining remaining
+
+                        -- Questions
+                        , Quiz.viewQuestion SelectAnswer question
 
                         -- Navigation buttons
                         , div [ class "flex justify-end" ]
                             [ previousButton
                             , nextButton (not (Quiz.answered question))
                             ]
-
-                        -- Remaining questions info
-                        , viewRemaining remaining
                         ]
 
 
