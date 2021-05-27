@@ -230,6 +230,13 @@ view model =
             viewStartPage model.userDraft
 
         Playing ->
+            let
+                remaining =
+                    Quiz.getNext model.quiz
+
+                question =
+                    Quiz.getQuestion model.quiz
+            in
             div
                 [ class "flex"
                 , class "flex-col"
@@ -237,7 +244,22 @@ view model =
                 ]
                 [ -- QUIZ
                   Header.view
-                , viewUser model.user
+                , div
+                    [ class "flex"
+                    , class "flex-row"
+                    , class "justify-between"
+                    ]
+                    [ viewUser model.user
+                    , viewRemaining remaining
+                    ]
+                , div
+                    [ class "flex-grow"
+                    , class "flex"
+                    , class "justify-center"
+                    , class "items-center"
+                    ]
+                    [ Quiz.viewQuestion SelectAnswer question
+                    ]
                 , viewQuiz model.quiz
                 ]
 
@@ -399,14 +421,8 @@ viewQuiz quiz =
     case previous of
         [] ->
             div [ Container.style ]
-                [ -- Remaining questions info
-                  viewRemaining remaining
-
-                -- Questions
-                , Quiz.viewQuestion SelectAnswer question
-
-                -- Navigation buttons
-                , div [ class "flex justify-end" ]
+                [ -- Navigation buttons
+                  div [ class "flex justify-end" ]
                     [ nextButton (not (Quiz.answered question))
                     ]
                 ]
@@ -415,10 +431,8 @@ viewQuiz quiz =
             case remaining of
                 [] ->
                     div [ Container.style ]
-                        [ Quiz.viewQuestion SelectAnswer question
-
-                        -- Navigation buttons
-                        , div [ class "flex justify-end" ]
+                        [ -- Navigation buttons
+                          div [ class "flex justify-end" ]
                             [ previousButton
                             , finishButton
                             ]
@@ -426,14 +440,8 @@ viewQuiz quiz =
 
                 _ ->
                     div [ Container.style ]
-                        [ -- Remaining questions info
-                          viewRemaining remaining
-
-                        -- Questions
-                        , Quiz.viewQuestion SelectAnswer question
-
-                        -- Navigation buttons
-                        , div [ class "flex justify-end" ]
+                        [ -- Navigation buttons
+                          div [ class "flex justify-end" ]
                             [ previousButton
                             , nextButton (not (Quiz.answered question))
                             ]

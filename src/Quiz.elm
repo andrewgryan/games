@@ -138,35 +138,54 @@ toScore question =
 
 viewQuestion : (Answer -> msg) -> Question -> Html msg
 viewQuestion toMsg question =
+    let
+        styles =
+            [ class "flex"
+            , class "flex-col"
+            , class "mx-2"
+            , class "w-full"
+            ]
+
+        ulStyles =
+            [ class "space-y-2"
+            ]
+    in
     case question of
         Question statement answers ->
-            div []
+            div styles
                 [ -- Question
                   viewStatement statement
 
                 -- Answers
-                , ul [] (List.map (viewAnswer toMsg) answers)
+                , ul ulStyles (List.map (viewAnswer toMsg) answers)
                 ]
 
         Answered statement answers answer ->
-            div []
+            div styles
                 [ -- Question
                   viewStatement statement
 
                 -- Answers
-                , ul [] (List.map (viewAnswered toMsg answer) answers)
+                , ul ulStyles (List.map (viewAnswered toMsg answer) answers)
                 ]
 
 
 viewStatement : String -> Html msg
 viewStatement statement =
-    div [ class "p-2 font-bold" ] [ text statement ]
+    div
+        [ class "font-bold"
+        , class "text-lg"
+        , class "pb-4"
+        ]
+        [ text statement ]
 
 
 viewAnswer : (Answer -> msg) -> Answer -> Html msg
 viewAnswer toMsg answer =
     li
         [ styleAnswer False
+        , class "bg-gray-200"
+        , class "p-4"
         , onClick (toMsg answer)
         ]
         [ text (answerToString answer) ]
@@ -176,6 +195,8 @@ viewAnswered : (Answer -> msg) -> Answer -> Answer -> Html msg
 viewAnswered toMsg selected answer =
     li
         [ styleAnswer (selected == answer)
+        , class "bg-gray-200"
+        , class "p-4"
         , onClick (toMsg answer)
         ]
         [ text (answerToString answer) ]
