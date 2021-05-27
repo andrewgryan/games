@@ -57,7 +57,7 @@ init key =
     , userDraft = ""
 
     -- QUIZ
-    , game = WaitingToSelectRoom
+    , game = WaitingToPlay
     , leaderBoard =
         LeaderBoard.empty
     , quiz = Quiz.first
@@ -232,13 +232,15 @@ view model =
         Playing ->
             div []
                 [ -- QUIZ
-                  viewQuiz model.quiz
+                  Header.view
+                , viewQuiz model.quiz
                 , viewUser model.user
                 ]
 
         ViewingResults ->
             div []
-                [ viewError model.errorMessage
+                [ Header.view
+                , viewError model.errorMessage
                 , LeaderBoard.view model.leaderBoard
                 ]
 
@@ -333,10 +335,15 @@ viewRooms toMsg =
 viewStartPage : String -> Html Msg
 viewStartPage draftName =
     div
-        [ class "w-full max-w-xs"
+        [ class "w-screen"
+        , class "h-screen"
+        , class "flex"
+        , class "flex-col"
         ]
-        [ div
-            [ class "bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+        [ Header.view
+        , div
+            [ class "bg-white rounded px-8 pt-6 pb-8 mb-4"
+            , class "flex-auto"
             ]
             [ div
                 [ class "mb-4"
