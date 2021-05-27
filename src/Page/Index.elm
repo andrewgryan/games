@@ -403,7 +403,16 @@ viewStartPage draftName =
 
 primaryButtonStyle : Html.Attribute Msg
 primaryButtonStyle =
-    class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2 my-2"
+    class <|
+        String.join " " <|
+            [ "bg-blue-500"
+            , "hover:bg-blue-700"
+            , "text-white"
+            , "font-bold"
+            , "p-4"
+            , "py-6"
+            , "flex-grow"
+            ]
 
 
 viewQuiz : Quiz -> Html Msg
@@ -422,7 +431,10 @@ viewQuiz quiz =
         [] ->
             div [ Container.style ]
                 [ -- Navigation buttons
-                  div [ class "flex justify-end" ]
+                  div
+                    [ class "flex justify-end"
+                    , class "bg-red-200"
+                    ]
                     [ nextButton (not (Quiz.answered question))
                     ]
                 ]
@@ -473,7 +485,14 @@ plural n =
 previousButton : Html Msg
 previousButton =
     button
-        [ class "bg-white border border-blue-500 hover:bg-blue-700 text-near-black py-2 px-4 rounded mx-2 my-2"
+        [ class <|
+            String.join " " <|
+                [ "bg-white"
+                , "border"
+                , "border-blue-500"
+                , "text-near-black"
+                , "flex-grow"
+                ]
         , onClick PreviousQuestion
         ]
         [ text "Go back" ]
