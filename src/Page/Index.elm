@@ -365,7 +365,6 @@ viewStartPage draftName =
         , class "h-screen"
         , class "flex"
         , class "flex-col"
-        , class "justify-between"
         ]
         [ Header.view
         , div
@@ -376,11 +375,12 @@ viewStartPage draftName =
                     , "justify-center"
                     , "items-center"
                     , "flex-grow"
+                    , "px-2"
+                    , "space-y-2"
                     ]
             ]
             [ div
                 [ class "w-full"
-                , class "px-2"
                 ]
                 [ label
                     [ class <|
@@ -413,9 +413,7 @@ viewStartPage draftName =
                     ]
                     []
                 ]
-            ]
-        , div []
-            [ if draftName /= "" then
+            , if draftName /= "" then
                 button
                     [ onClick StartQuiz
                     , primaryButtonStyle
