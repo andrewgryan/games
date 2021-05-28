@@ -12,7 +12,6 @@ import Json.Decode as D
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
-import Page.Room
 import Ports exposing (sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
 import Route exposing (Route(..))
@@ -26,8 +25,7 @@ import User exposing (User)
 
 
 type Game
-    = WaitingToSelectRoom
-    | WaitingToPlay
+    = WaitingToPlay
     | Playing
     | ViewingResults
 
@@ -103,8 +101,10 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
-      -- NAVIGATE
-    | GotRoom Navigation.Key Int
+
+
+
+-- NAVIGATE
 
 
 gotLeaderBoard : LeaderBoard -> Msg
@@ -131,24 +131,6 @@ update msg model =
 
         WebSocket status ->
             ( { model | status = status }, Cmd.none )
-
-        -- NAVIGATE
-        GotRoom key n ->
-            let
-                url =
-                    Route.toString (Room n)
-
-                portCmd =
-                    Ports.encode "join" (joinRoomPayload n)
-                        |> Ports.sendMessage
-
-                cmd =
-                    Cmd.batch
-                        [ Navigation.pushUrl key url
-                        , portCmd
-                        ]
-            in
-            ( model, cmd )
 
         -- USER
         UserSend ->
@@ -223,9 +205,6 @@ update msg model =
 view : Model -> Html Msg
 view model =
     case model.game of
-        WaitingToSelectRoom ->
-            viewRooms (GotRoom model.key)
-
         WaitingToPlay ->
             viewStartPage model.userDraft
 

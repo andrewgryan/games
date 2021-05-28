@@ -13,7 +13,6 @@ import Json.Decode as D
 import Json.Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
 import Page.Index as Index
-import Page.Room as Room
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
 import Score exposing (Score)
@@ -48,7 +47,6 @@ type Model
 
 type Page
     = IndexPage Index.Model
-    | RoomPage Room.Model
 
 
 
@@ -57,7 +55,6 @@ type Page
 
 type Msg
     = IndexMsg Index.Msg
-    | RoomMsg Room.Msg
       -- PORT
     | Recv Value
       -- NAVIGATION
@@ -90,20 +87,6 @@ init value url key =
             let
                 page =
                     IndexPage (Index.init key)
-            in
-            ( Model session page, Cmd.none )
-
-        Route.Room n ->
-            let
-                page =
-                    RoomPage (Room.init key n)
-            in
-            ( Model session page, Cmd.none )
-
-        Route.Play n ->
-            let
-                page =
-                    RoomPage (Room.init key n)
             in
             ( Model session page, Cmd.none )
 
@@ -153,31 +136,44 @@ update msg (Model session page) =
                     in
                     ( Model session nextPage, Cmd.none )
 
-                Room n ->
-                    let
-                        nextPage =
-                            RoomPage (Room.init key n)
-                    in
-                    ( Model session nextPage, Cmd.none )
-
-                Play n ->
-                    let
-                        nextPage =
-                            RoomPage (Room.init key n)
-                    in
-                    ( Model session nextPage, Cmd.none )
-
         -- PORT
         ( Recv value, IndexPage subModel ) ->
             case D.decodeValue portDecoder value of
-                Ok leaderBoard ->
-                    let
-                        ( indexModel, cmd ) =
-                            Index.update (Index.gotLeaderBoard leaderBoard) subModel
-                    in
-                    ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
+                Ok portMsg ->
+                    case portMsg of
+                        LeaderBoardMsg leaderBoard ->
+                            let
+                                ( indexModel, cmd ) =
+                                    Index.update (Index.gotLeaderBoard leaderBoard) subModel
+                            in
+                            ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
+
+                        EnterMsg str ->
+                            let
+                                _ =
+                                    Debug.log "EnterMsg" str
+                            in
+                            ( model, Cmd.none )
+
+                        JoinMsg str ->
+                            let
+                                _ =
+                                    Debug.log "JoinMsg" str
+                            in
+                            ( model, Cmd.none )
+
+                        ExitMsg str ->
+                            let
+                                _ =
+                                    Debug.log "ExitMsg" str
+                            in
+                            ( model, Cmd.none )
 
                 Err error ->
+                    let
+                        _ =
+                            Debug.log "Elm error" error
+                    in
                     ( model, Cmd.none )
 
         -- PAGE
@@ -191,27 +187,40 @@ update msg (Model session page) =
             in
             ( Model session nextPage, Cmd.map IndexMsg nextCmd )
 
-        ( RoomMsg subMsg, RoomPage subModel ) ->
-            let
-                ( nextModel, nextCmd ) =
-                    Room.update subMsg subModel
-
-                nextPage =
-                    RoomPage nextModel
-            in
-            ( Model session nextPage, Cmd.map RoomMsg nextCmd )
-
-        ( _, _ ) ->
-            ( model, Cmd.none )
-
 
 
 -- PORT DECODER
 
 
-portDecoder : D.Decoder LeaderBoard
+type PortMsg
+    = LeaderBoardMsg LeaderBoard
+    | ExitMsg String
+    | EnterMsg String
+    | JoinMsg String
+
+
+portDecoder : D.Decoder PortMsg
 portDecoder =
-    LeaderBoard.decoder
+    D.oneOf
+        [ D.map LeaderBoardMsg LeaderBoard.decoder
+        , D.field "type" D.string |> D.andThen payloadDecoder
+        ]
+
+
+payloadDecoder : String -> D.Decoder PortMsg
+payloadDecoder label =
+    case label of
+        "enter" ->
+            D.map EnterMsg (D.field "payload" (D.field "id" D.string))
+
+        "join" ->
+            D.map JoinMsg (D.field "payload" (D.field "id" D.string))
+
+        "exit" ->
+            D.map ExitMsg (D.field "payload" (D.field "id" D.string))
+
+        _ ->
+            D.fail "Unrecognised msg type"
 
 
 
@@ -230,9 +239,6 @@ viewBody (Model key page) =
     case page of
         IndexPage model ->
             Html.map IndexMsg (Index.view model)
-
-        RoomPage model ->
-            Html.map RoomMsg (Room.view model)
 
 
 

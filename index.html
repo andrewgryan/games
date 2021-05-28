@@ -27,19 +27,24 @@
                 let { type, payload } = msg
                 me = payload.id
                 console.log("enter", msg)
+                app.ports.messageReceiver.send(msg)
+
                 socket.emit("public", { type: "join", payload })
             })
             socket.on("exit", msg => {
                 console.log("exit", msg)
+                app.ports.messageReceiver.send(msg)
             })
 
 
             // Listen for public/private events
             socket.on("private", msg => {
                 console.log("private", msg)
+                app.ports.messageReceiver.send(msg)
             })
             socket.on("public", msg => {
                 console.log("public", msg)
+                app.ports.messageReceiver.send(msg)
                 let { type, payload } = msg
                 switch (type) {
                     case "join":
