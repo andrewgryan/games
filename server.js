@@ -28,7 +28,7 @@ io.on("connection", socket => {
     // Wire up enter/leave events
     socket.emit("enter", { type: "enter", payload: { id: socket.id} })
     socket.on("disconnect", () => {
-        socket.emit("leave", { type: "leave", payload: { id: socket.id} })
+        socket.broadcast.emit("exit", { type: "exit", payload: { id: socket.id} })
     })
 
     // Listen for user join

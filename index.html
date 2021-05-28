@@ -22,8 +22,10 @@
             
 
             // Listen for enter/leave events
+            let me
             socket.on("enter", msg => {
                 let { type, payload } = msg
+                me = payload.id
                 console.log("enter", msg)
                 socket.emit("public", { type: "join", payload })
             })
@@ -44,7 +46,7 @@
                         socket.emit("private", {
                                 to: payload.id,
                                 type: "join",
-                                payload })
+                                payload: { id: me } })
                         break;
                     default:
                         console.log("default", msg)
