@@ -20,29 +20,13 @@ import Url
 
 
 
--- SESSION
-
-
-type Session
-    = Session Key
-
-
-toKey : Session -> Key
-toKey (Session key) =
-    key
-
-
-fromKey : Key -> Session
-fromKey key =
-    Session key
-
-
-
 -- MODEL
 
 
-type Model
-    = Model Session Page
+type alias Model =
+    { key : Key
+    , page : Page
+    }
 
 
 type Page
@@ -78,9 +62,6 @@ init value url key =
 
         route =
             Route.fromUrl url
-
-        session =
-            fromKey key
     in
     case route of
         Route.Index ->
@@ -88,7 +69,7 @@ init value url key =
                 page =
                     IndexPage (Index.init key)
             in
-            ( Model session page, Cmd.none )
+            ( { key = key, page = page }, Cmd.none )
 
 
 decoderFlags : D.Decoder Flags
@@ -102,21 +83,14 @@ decoderFlags =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg (Model session page) =
-    let
-        model =
-            Model session page
-
-        key =
-            toKey session
-    in
-    case ( msg, page ) of
+update msg model =
+    case ( msg, model.page ) of
         -- NAVIGATION
         ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model
-                    , Browser.Navigation.pushUrl key
+                    , Browser.Navigation.pushUrl model.key
                         (Url.toString url)
                     )
 
@@ -132,9 +106,9 @@ update msg (Model session page) =
                 Index ->
                     let
                         nextPage =
-                            IndexPage (Index.init key)
+                            IndexPage (Index.init model.key)
                     in
-                    ( Model session nextPage, Cmd.none )
+                    ( { model | page = nextPage }, Cmd.none )
 
         -- PORT
         ( Recv value, IndexPage subModel ) ->
@@ -145,8 +119,11 @@ update msg (Model session page) =
                             let
                                 ( indexModel, cmd ) =
                                     Index.update (Index.gotLeaderBoard leaderBoard) subModel
+
+                                page =
+                                    IndexPage indexModel
                             in
-                            ( Model session (IndexPage indexModel), Cmd.map IndexMsg cmd )
+                            ( { model | page = page }, Cmd.map IndexMsg cmd )
 
                         EnterMsg str ->
                             let
@@ -185,7 +162,7 @@ update msg (Model session page) =
                 nextPage =
                     IndexPage nextModel
             in
-            ( Model session nextPage, Cmd.map IndexMsg nextCmd )
+            ( { model | page = nextPage }, Cmd.map IndexMsg nextCmd )
 
 
 
@@ -235,10 +212,10 @@ view model =
 
 
 viewBody : Model -> Html Msg
-viewBody (Model key page) =
-    case page of
-        IndexPage model ->
-            Html.map IndexMsg (Index.view model)
+viewBody model =
+    case model.page of
+        IndexPage subModel ->
+            Html.map IndexMsg (Index.view subModel)
 
 
 
