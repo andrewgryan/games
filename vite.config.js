@@ -6,7 +6,10 @@ module.exports = {
     server: {
         proxy: {
             '/socket.io': {
-                target: 'http://localhost:8080'
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                safe: false,
+                ws: true
             }
         }
     }

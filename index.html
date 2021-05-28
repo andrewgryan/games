@@ -21,6 +21,37 @@
             let socket = io();
             
 
+            // Listen for enter/leave events
+            socket.on("enter", msg => {
+                let { type, payload } = msg
+                console.log("enter", msg)
+                socket.emit("public", { type: "join", payload })
+            })
+            socket.on("exit", msg => {
+                console.log("exit", msg)
+            })
+
+
+            // Listen for public/private events
+            socket.on("private", msg => {
+                console.log("private", msg)
+            })
+            socket.on("public", msg => {
+                console.log("public", msg)
+                let { type, payload } = msg
+                switch (type) {
+                    case "join":
+                        socket.emit("private", {
+                                to: payload.id,
+                                type: "join",
+                                payload })
+                        break;
+                    default:
+                        console.log("default", msg)
+                }
+            })
+
+
             // Connect Elm to/from WebSocket
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", message)

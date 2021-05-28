@@ -8,7 +8,7 @@
     "dev": "vite",
     "start": "node server.js",
     "build": "vite build",
-    "watch": "nodemon server.js"
+    "server": "nodemon server.js"
   },
   "repository": {
     "type": "git",
