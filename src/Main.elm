@@ -10,12 +10,13 @@ import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (Html)
 import Json.Decode as D
-import Json.Encode exposing (Value)
+import Json.Encode as Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
 import Page.Index as Index
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
 import Score exposing (Score)
+import Set exposing (Set)
 import Url
 
 
@@ -27,7 +28,7 @@ type alias Model =
     { key : Key
     , page : Page
     , socket : Maybe String
-    , sockets : List String
+    , sockets : Set String
     }
 
 
@@ -74,7 +75,7 @@ init value url key =
             ( { key = key
               , page = page
               , socket = Nothing
-              , sockets = []
+              , sockets = Set.empty
               }
             , Cmd.none
             )
@@ -134,21 +135,35 @@ update msg model =
                             ( { model | page = page }, Cmd.map IndexMsg cmd )
 
                         EnterMsg str ->
-                            ( { model | socket = Just str }, Cmd.none )
+                            let
+                                cmd =
+                                    Encode.object
+                                        [ ( "channel", Encode.string "public" )
+                                        , ( "type", Encode.string "join" )
+                                        , ( "payload"
+                                          , Encode.object
+                                                [ ( "id", Encode.string str )
+                                                ]
+                                          )
+                                        ]
+                                        |> Encode.encode 0
+                                        |> Ports.sendMessage
+                            in
+                            ( { model | socket = Just str }, cmd )
 
                         JoinMsg str ->
                             ( { model
-                                | sockets = str :: model.sockets
+                                | sockets = Set.insert str model.sockets
                               }
                             , Cmd.none
                             )
 
                         ExitMsg str ->
-                            let
-                                _ =
-                                    Debug.log "ExitMsg" str
-                            in
-                            ( model, Cmd.none )
+                            ( { model
+                                | sockets = Set.remove str model.sockets
+                              }
+                            , Cmd.none
+                            )
 
                 Err error ->
                     let

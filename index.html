@@ -29,7 +29,7 @@
                 console.log("enter", msg)
                 app.ports.messageReceiver.send(msg)
 
-                socket.emit("public", { type: "join", payload })
+                // socket.emit("public", { type: "join", payload })
             })
             socket.on("exit", msg => {
                 console.log("exit", msg)
@@ -61,9 +61,9 @@
 
             // Connect Elm to/from WebSocket
             app.ports.sendMessage.subscribe((message) => {
-                console.log("SEND TO SERVER", message)
-                let { type, payload } = JSON.parse(message)
-                socket.emit(type, payload)
+                console.log("SEND TO SERVER", JSON.parse(message))
+                let { type, payload, channel } = JSON.parse(message)
+                socket.emit(channel, { type, payload })
             })
             socket.on("leaderboard", (leaderboard) => {
                 console.log("RECV FROM SERVER", leaderboard)
