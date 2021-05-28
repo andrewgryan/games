@@ -26,6 +26,8 @@ import Url
 type alias Model =
     { key : Key
     , page : Page
+    , socket : Maybe String
+    , sockets : List String
     }
 
 
@@ -69,7 +71,13 @@ init value url key =
                 page =
                     IndexPage (Index.init key)
             in
-            ( { key = key, page = page }, Cmd.none )
+            ( { key = key
+              , page = page
+              , socket = Nothing
+              , sockets = []
+              }
+            , Cmd.none
+            )
 
 
 decoderFlags : D.Decoder Flags
@@ -126,18 +134,14 @@ update msg model =
                             ( { model | page = page }, Cmd.map IndexMsg cmd )
 
                         EnterMsg str ->
-                            let
-                                _ =
-                                    Debug.log "EnterMsg" str
-                            in
-                            ( model, Cmd.none )
+                            ( { model | socket = Just str }, Cmd.none )
 
                         JoinMsg str ->
-                            let
-                                _ =
-                                    Debug.log "JoinMsg" str
-                            in
-                            ( model, Cmd.none )
+                            ( { model
+                                | sockets = str :: model.sockets
+                              }
+                            , Cmd.none
+                            )
 
                         ExitMsg str ->
                             let

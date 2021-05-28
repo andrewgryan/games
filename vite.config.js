@@ -2,7 +2,8 @@ import elmPlugin from "vite-plugin-elm"
 
 
 module.exports = {
-    plugins: [ elmPlugin({ debug: false }) ],
+    // plugins: [ elmPlugin({ debug: false }) ],
+    plugins: [ elmPlugin() ],
     server: {
         proxy: {
             '/socket.io': {
