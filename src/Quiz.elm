@@ -244,6 +244,48 @@ second =
             , Right "0, nil point"
             , Wrong "523, one short of Italy"
             ]
+        , Question "Which year did Arthur Guinness found Guiness?"
+            [ Wrong "1066"
+            , Wrong "1812"
+            , Right "1759"
+            ]
+        , Question "How many pairs of wings does a bee have?"
+            [ Wrong "one"
+            , Right "two"
+            , Wrong "three"
+            ]
+        , Question "Yuriy Gagarin was the first man in space, who was the first American in space?"
+            [ Wrong "Buzz Aldrin"
+            , Wrong "Chuck Yeager"
+            , Right "Alan Shephard"
+            ]
+        , Question "Which of these planets has the hottest atmosphere?"
+            [ Wrong "Mercury"
+            , Right "Venus"
+            , Wrong "Earth"
+            , Wrong "Mars"
+            ]
+        , Question "What does a funambulist do?"
+            [ Right "Walk a tight rope"
+            , Wrong "Juggle"
+            , Wrong "Follows ambulances"
+            ]
+        , Question "I'm tall when I'm young and short when I'm old, what am I?"
+            [ Wrong "Fuse"
+            , Wrong "Giraffe"
+            , Right "Candle"
+            ]
+        , Question "What is a group of turkeys called?"
+            [ Wrong "A clutch"
+            , Right "A rafter"
+            , Wrong "A brood"
+            , Wrong "A peep"
+            ]
+        , Question "Complete the lyric: Fly me to the moon, let me..."
+            [ Right "...play among the stars"
+            , Wrong "...see what life is like on Jupiter and Mars"
+            , Wrong "...entertain you"
+            ]
         ]
 
 
