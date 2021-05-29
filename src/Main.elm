@@ -195,6 +195,13 @@ type PortMsg
     | JoinMsg String
 
 
+type Channel
+    = Enter
+    | Exit
+    | Private
+    | Public
+
+
 portDecoder : D.Decoder PortMsg
 portDecoder =
     D.oneOf

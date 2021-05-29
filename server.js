@@ -53,7 +53,8 @@ io.on("connection", socket => {
 
     // Listen for score
     // TODO move this to client layer
-    socket.on("score", payload => {
+    socket.on("score", msg => {
+        let { payload } = msg
         leaderboard.push(payload)
         // Emit to everyone
         io.emit("leaderboard", leaderboard)

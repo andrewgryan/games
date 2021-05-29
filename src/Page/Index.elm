@@ -58,7 +58,7 @@ init key =
     , game = WaitingToPlay
     , leaderBoard =
         LeaderBoard.empty
-    , quiz = Quiz.first
+    , quiz = Quiz.second
     }
 
 

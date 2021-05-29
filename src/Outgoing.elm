@@ -39,6 +39,7 @@ encode outgoing =
             Encode.encode 0
                 (Encode.object
                     [ ( "type", Encode.string "score" )
+                    , ( "channel", Encode.string "score" )
                     , ( "payload", Score.encode score )
                     ]
                 )

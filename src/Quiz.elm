@@ -229,6 +229,24 @@ answerToString answer =
 -- WRITTEN QUIZ
 
 
+second : Quiz
+second =
+    Quiz
+        []
+        (Question "How many loaves in a bakers dozen?"
+            [ Wrong "12"
+            , Right "13"
+            , Wrong "14"
+            ]
+        )
+        [ Question "How many points did the UK get in the Eurovision?"
+            [ Wrong "12, all from Ireland"
+            , Right "0, nil point"
+            , Wrong "523, one short of Italy"
+            ]
+        ]
+
+
 first : Quiz
 first =
     Quiz
