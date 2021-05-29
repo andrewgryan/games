@@ -166,10 +166,7 @@ update msg model =
                             )
 
                 Err error ->
-                    let
-                        _ =
-                            Debug.log "Elm error" error
-                    in
+                    -- TODO report errors
                     ( model, Cmd.none )
 
         -- PAGE
