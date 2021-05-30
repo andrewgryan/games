@@ -240,9 +240,9 @@ second =
             ]
         )
         [ Question "How many points did the UK get in the Eurovision?"
-            [ Wrong "12, all from Ireland"
-            , Right "0, nil point"
-            , Wrong "523, one short of Italy"
+            [ Wrong "12 - From Ireland"
+            , Right "0 - Nul points"
+            , Wrong "523 - One short of Italy"
             ]
         , Question "Which year did Arthur Guinness found Guiness?"
             [ Wrong "1066"

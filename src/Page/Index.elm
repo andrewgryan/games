@@ -14,6 +14,7 @@ import LeaderBoard exposing (LeaderBoard)
 import Outgoing
 import Ports exposing (sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
+import Review
 import Route exposing (Route(..))
 import Score exposing (Score)
 import Url exposing (Url)
@@ -247,6 +248,7 @@ view model =
                 [ Header.view
                 , viewError model.errorMessage
                 , LeaderBoard.view model.leaderBoard
+                , Review.view model.quiz
                 ]
 
 
