@@ -55,6 +55,7 @@ init _ url key =
             -- INTER-APP COMMS
             , socket = Nothing
             , sockets = Set.empty
+            , users = Set.empty
             }
     in
     ( model, Cmd.none )
@@ -78,6 +79,7 @@ type alias Model =
     -- Inter-app communication
     , socket : Maybe String
     , sockets : Set String
+    , users : Set String
     }
 
 
@@ -87,8 +89,7 @@ type alias Model =
 
 type Msg
     = -- USER
-      UserSend
-    | UserDraftChanged String
+      UserDraftChanged String
       -- QUIZ
     | StartQuiz
     | NextQuestion
@@ -107,6 +108,7 @@ type PortMsg
     | ExitMsg String
     | EnterMsg String
     | JoinMsg Channel String
+    | UserMsg String
 
 
 type Channel
@@ -141,6 +143,9 @@ payloadDecoder label =
                 (D.field "channel" channelDecoder)
                 (D.field "payload" (D.field "id" D.string))
 
+        "user" ->
+            D.map UserMsg (D.field "payload" (D.field "user" D.string))
+
         "exit" ->
             D.map ExitMsg (D.field "payload" (D.field "id" D.string))
 
@@ -172,6 +177,16 @@ joinRoomPayload n =
         ]
 
 
+encodeSocket : Maybe String -> Encode.Value
+encodeSocket maybeSocket =
+    case maybeSocket of
+        Just str ->
+            Encode.string str
+
+        Nothing ->
+            Encode.null
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -196,15 +211,6 @@ update msg model =
                 Index ->
                     init () url model.key
 
-        -- USER
-        UserSend ->
-            ( { model
-                | userDraft = ""
-                , user = User.loggedIn model.userDraft
-              }
-            , Cmd.none
-            )
-
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
 
@@ -213,12 +219,26 @@ update msg model =
             let
                 user =
                     User.loggedIn model.userDraft
+
+                cmd =
+                    Encode.object
+                        [ ( "channel", Encode.string "public" )
+                        , ( "type", Encode.string "user" )
+                        , ( "payload"
+                          , Encode.object
+                                [ ( "id", encodeSocket model.socket )
+                                , ( "user", Encode.string model.userDraft )
+                                ]
+                          )
+                        ]
+                        |> Encode.encode 0
+                        |> Ports.sendMessage
             in
             ( { model
                 | game = Playing
                 , user = user
               }
-            , Cmd.none
+            , cmd
             )
 
         FinishQuiz ->
@@ -290,6 +310,13 @@ update msg model =
                             , Cmd.none
                             )
 
+                        UserMsg str ->
+                            ( { model
+                                | users = Set.insert str model.users
+                              }
+                            , Cmd.none
+                            )
+
                         ExitMsg str ->
                             ( { model
                                 | sockets = Set.remove str model.sockets
@@ -315,9 +342,13 @@ view model =
 
 viewBody : Model -> Html Msg
 viewBody model =
+    let
+        friends =
+            Set.toList model.users
+    in
     case model.game of
         WaitingToPlay ->
-            viewStartPage model.userDraft
+            viewStartPage model.userDraft friends
 
         Playing ->
             let
@@ -339,7 +370,10 @@ viewBody model =
                     , class "flex-row"
                     , class "justify-between"
                     ]
-                    [ viewUser model.user
+                    [ div []
+                        [ viewUser model.user
+                        , viewFriends friends
+                        ]
                     , viewRemaining remaining
                     ]
                 , div
@@ -449,8 +483,25 @@ viewRooms toMsg =
         ]
 
 
-viewStartPage : String -> Html Msg
-viewStartPage draftName =
+viewFriends : List String -> Html Msg
+viewFriends friends =
+    div
+        [ class "font-light text-sm p-1"
+        ]
+        [ div
+            [ class "inline"
+            ]
+            [ text "Friends online: " ]
+        , div
+            [ class "font-bold"
+            , class "inline"
+            ]
+            [ text (String.join " " friends) ]
+        ]
+
+
+viewStartPage : String -> List String -> Html Msg
+viewStartPage draftName friends =
     div
         [ class "w-screen"
         , class "h-screen"
@@ -458,6 +509,7 @@ viewStartPage draftName =
         , class "flex-col"
         ]
         [ Header.view
+        , viewFriends friends
         , div
             [ class <|
                 String.join " " <|
