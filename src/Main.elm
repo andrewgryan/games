@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation as Navigation exposing (Key)
 import Container
+import Dict exposing (Dict)
 import Header
 import Helper exposing (classes, ifIsEnter)
 import Heroicons exposing (menu, pencil)
@@ -20,7 +21,7 @@ import Route exposing (Route(..))
 import Score exposing (Score)
 import Set exposing (Set)
 import Url exposing (Url)
-import User exposing (User)
+import User exposing (User(..))
 
 
 
@@ -55,7 +56,7 @@ init _ url key =
             -- INTER-APP COMMS
             , socket = Nothing
             , sockets = Set.empty
-            , users = Set.empty
+            , users = Dict.empty
             }
     in
     ( model, Cmd.none )
@@ -79,7 +80,7 @@ type alias Model =
     -- Inter-app communication
     , socket : Maybe String
     , sockets : Set String
-    , users : Set String
+    , users : Dict String String
     }
 
 
@@ -108,7 +109,7 @@ type PortMsg
     | ExitMsg String
     | EnterMsg String
     | JoinMsg Channel String
-    | UserMsg String
+    | UserMsg Channel String String
 
 
 type Channel
@@ -130,10 +131,6 @@ portDecoder =
 
 payloadDecoder : String -> D.Decoder PortMsg
 payloadDecoder label =
-    let
-        _ =
-            Debug.log "label" label
-    in
     case label of
         "enter" ->
             D.map EnterMsg (D.field "payload" (D.field "id" D.string))
@@ -144,7 +141,10 @@ payloadDecoder label =
                 (D.field "payload" (D.field "id" D.string))
 
         "user" ->
-            D.map UserMsg (D.field "payload" (D.field "user" D.string))
+            D.map3 UserMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "user" D.string))
+                (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
             D.map ExitMsg (D.field "payload" (D.field "id" D.string))
@@ -310,22 +310,53 @@ update msg model =
                             , Cmd.none
                             )
 
-                        UserMsg str ->
+                        UserMsg channel str id ->
+                            let
+                                cmd =
+                                    case channel of
+                                        Public ->
+                                            case model.user of
+                                                Anonymous ->
+                                                    Cmd.none
+
+                                                LoggedIn name ->
+                                                    Encode.object
+                                                        [ ( "channel", Encode.string "private" )
+                                                        , ( "to", Encode.string id )
+                                                        , ( "type", Encode.string "user" )
+                                                        , ( "payload"
+                                                          , Encode.object
+                                                                [ ( "id", encodeSocket model.socket )
+                                                                , ( "user", Encode.string name )
+                                                                ]
+                                                          )
+                                                        ]
+                                                        |> Encode.encode 0
+                                                        |> Ports.sendMessage
+
+                                        Private ->
+                                            Cmd.none
+                            in
                             ( { model
-                                | users = Set.insert str model.users
+                                | users = Dict.insert id str model.users
                               }
-                            , Cmd.none
+                            , cmd
                             )
 
                         ExitMsg str ->
                             ( { model
                                 | sockets = Set.remove str model.sockets
+                                , users = Dict.remove str model.users
                               }
                             , Cmd.none
                             )
 
                 Err error ->
                     -- TODO report errors
+                    let
+                        _ =
+                            Debug.log "Elm Decoder error" error
+                    in
                     ( model, Cmd.none )
 
 
@@ -344,7 +375,7 @@ viewBody : Model -> Html Msg
 viewBody model =
     let
         friends =
-            Set.toList model.users
+            Dict.values model.users |> List.sort
     in
     case model.game of
         WaitingToPlay ->
@@ -509,7 +540,6 @@ viewStartPage draftName friends =
         , class "flex-col"
         ]
         [ Header.view
-        , viewFriends friends
         , div
             [ class <|
                 String.join " " <|
