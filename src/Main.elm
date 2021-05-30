@@ -106,7 +106,12 @@ type PortMsg
     = LeaderBoardMsg LeaderBoard
     | ExitMsg String
     | EnterMsg String
-    | JoinMsg String
+    | JoinMsg Channel String
+
+
+type Channel
+    = Public
+    | Private
 
 
 
@@ -123,18 +128,41 @@ portDecoder =
 
 payloadDecoder : String -> D.Decoder PortMsg
 payloadDecoder label =
+    let
+        _ =
+            Debug.log "label" label
+    in
     case label of
         "enter" ->
             D.map EnterMsg (D.field "payload" (D.field "id" D.string))
 
         "join" ->
-            D.map JoinMsg (D.field "payload" (D.field "id" D.string))
+            D.map2 JoinMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
             D.map ExitMsg (D.field "payload" (D.field "id" D.string))
 
         _ ->
             D.fail "Unrecognised msg type"
+
+
+channelDecoder : D.Decoder Channel
+channelDecoder =
+    D.string
+        |> D.andThen
+            (\str ->
+                case str of
+                    "public" ->
+                        D.succeed Public
+
+                    "private" ->
+                        D.succeed Private
+
+                    _ ->
+                        D.fail "Unknown channel type"
+            )
 
 
 joinRoomPayload : Int -> Encode.Value
@@ -229,6 +257,10 @@ update msg model =
         Recv value ->
             case D.decodeValue portDecoder value of
                 Ok portMsg ->
+                    let
+                        _ =
+                            Debug.log "portMsg" portMsg
+                    in
                     case portMsg of
                         -- LEADERBOARD
                         LeaderBoardMsg leaderBoard ->
@@ -251,7 +283,7 @@ update msg model =
                             in
                             ( { model | socket = Just str }, cmd )
 
-                        JoinMsg str ->
+                        JoinMsg channel str ->
                             ( { model
                                 | sockets = Set.insert str model.sockets
                               }
