@@ -277,10 +277,6 @@ update msg model =
         Recv value ->
             case D.decodeValue portDecoder value of
                 Ok portMsg ->
-                    let
-                        _ =
-                            Debug.log "portMsg" portMsg
-                    in
                     case portMsg of
                         -- LEADERBOARD
                         LeaderBoardMsg leaderBoard ->
@@ -353,10 +349,6 @@ update msg model =
 
                 Err error ->
                     -- TODO report errors
-                    let
-                        _ =
-                            Debug.log "Elm Decoder error" error
-                    in
                     ( model, Cmd.none )
 
 
