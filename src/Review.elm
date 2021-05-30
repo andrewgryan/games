@@ -94,7 +94,7 @@ viewAnswered user option =
             Right str ->
                 div
                     [ class "font-bold"
-                    , class "text-blue-500"
+                    , class "text-green-500"
                     ]
                     [ text str ]
 
