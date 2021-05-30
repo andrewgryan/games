@@ -26,25 +26,29 @@
             socket.on("enter", msg => {
                 let { type, payload } = msg
                 me = payload.id
-                console.log("enter", msg)
-                app.ports.messageReceiver.send({ channel: "enter", msg })
+                console.log("JavaScript enter", msg)
+                app.ports.messageReceiver.send(
+                    Object.assign({}, msg, { channel: "enter" }))
 
                 // socket.emit("public", { type: "join", payload })
             })
             socket.on("exit", msg => {
-                console.log("exit", msg)
-                app.ports.messageReceiver.send({ channel: "exit", msg })
+                console.log("JavaScript exit", msg)
+                app.ports.messageReceiver.send(
+                    Object.assign({}, msg, { channel: "exit" }))
             })
 
 
             // Listen for public/private events
             socket.on("private", msg => {
-                console.log("private", msg)
-                app.ports.messageReceiver.send({ channel: "private", msg })
+                console.log("JavaScript private", msg)
+                app.ports.messageReceiver.send(
+                    Object.assign({}, msg, { channel: "private" }))
             })
             socket.on("public", msg => {
-                console.log("public", msg)
-                app.ports.messageReceiver.send({ channel: "public", msg })
+                console.log("JavaScript public", msg)
+                app.ports.messageReceiver.send(
+                    Object.assign({}, msg, { channel: "public" }))
                 let { type, payload } = msg
                 switch (type) {
                     case "join":
@@ -63,7 +67,7 @@
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", JSON.parse(message))
                 let { type, payload, channel } = JSON.parse(message)
-                socket.emit(channel, { type, payload })
+                socket.emit(channel, JSON.parse(message))
             })
             socket.on("leaderboard", (leaderboard) => {
                 console.log("RECV FROM SERVER", leaderboard)

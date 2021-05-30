@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation as Navigation exposing (Key)
 import Container
+import Dict exposing (Dict)
 import Header
 import Helper exposing (classes, ifIsEnter)
 import Heroicons exposing (menu, pencil)
@@ -20,7 +21,7 @@ import Route exposing (Route(..))
 import Score exposing (Score)
 import Set exposing (Set)
 import Url exposing (Url)
-import User exposing (User)
+import User exposing (User(..))
 
 
 
@@ -55,6 +56,7 @@ init _ url key =
             -- INTER-APP COMMS
             , socket = Nothing
             , sockets = Set.empty
+            , users = Dict.empty
             }
     in
     ( model, Cmd.none )
@@ -78,6 +80,7 @@ type alias Model =
     -- Inter-app communication
     , socket : Maybe String
     , sockets : Set String
+    , users : Dict String String
     }
 
 
@@ -87,8 +90,7 @@ type alias Model =
 
 type Msg
     = -- USER
-      UserSend
-    | UserDraftChanged String
+      UserDraftChanged String
       -- QUIZ
     | StartQuiz
     | NextQuestion
@@ -106,7 +108,13 @@ type PortMsg
     = LeaderBoardMsg LeaderBoard
     | ExitMsg String
     | EnterMsg String
-    | JoinMsg String
+    | JoinMsg Channel String
+    | UserMsg Channel String String
+
+
+type Channel
+    = Public
+    | Private
 
 
 
@@ -128,7 +136,15 @@ payloadDecoder label =
             D.map EnterMsg (D.field "payload" (D.field "id" D.string))
 
         "join" ->
-            D.map JoinMsg (D.field "payload" (D.field "id" D.string))
+            D.map2 JoinMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "id" D.string))
+
+        "user" ->
+            D.map3 UserMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "user" D.string))
+                (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
             D.map ExitMsg (D.field "payload" (D.field "id" D.string))
@@ -137,11 +153,38 @@ payloadDecoder label =
             D.fail "Unrecognised msg type"
 
 
+channelDecoder : D.Decoder Channel
+channelDecoder =
+    D.string
+        |> D.andThen
+            (\str ->
+                case str of
+                    "public" ->
+                        D.succeed Public
+
+                    "private" ->
+                        D.succeed Private
+
+                    _ ->
+                        D.fail "Unknown channel type"
+            )
+
+
 joinRoomPayload : Int -> Encode.Value
 joinRoomPayload n =
     Encode.object
         [ ( "room", Encode.int n )
         ]
+
+
+encodeSocket : Maybe String -> Encode.Value
+encodeSocket maybeSocket =
+    case maybeSocket of
+        Just str ->
+            Encode.string str
+
+        Nothing ->
+            Encode.null
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -168,15 +211,6 @@ update msg model =
                 Index ->
                     init () url model.key
 
-        -- USER
-        UserSend ->
-            ( { model
-                | userDraft = ""
-                , user = User.loggedIn model.userDraft
-              }
-            , Cmd.none
-            )
-
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
 
@@ -185,12 +219,26 @@ update msg model =
             let
                 user =
                     User.loggedIn model.userDraft
+
+                cmd =
+                    Encode.object
+                        [ ( "channel", Encode.string "public" )
+                        , ( "type", Encode.string "user" )
+                        , ( "payload"
+                          , Encode.object
+                                [ ( "id", encodeSocket model.socket )
+                                , ( "user", Encode.string model.userDraft )
+                                ]
+                          )
+                        ]
+                        |> Encode.encode 0
+                        |> Ports.sendMessage
             in
             ( { model
                 | game = Playing
                 , user = user
               }
-            , Cmd.none
+            , cmd
             )
 
         FinishQuiz ->
@@ -229,6 +277,10 @@ update msg model =
         Recv value ->
             case D.decodeValue portDecoder value of
                 Ok portMsg ->
+                    let
+                        _ =
+                            Debug.log "portMsg" portMsg
+                    in
                     case portMsg of
                         -- LEADERBOARD
                         LeaderBoardMsg leaderBoard ->
@@ -251,22 +303,60 @@ update msg model =
                             in
                             ( { model | socket = Just str }, cmd )
 
-                        JoinMsg str ->
+                        JoinMsg channel str ->
                             ( { model
                                 | sockets = Set.insert str model.sockets
                               }
                             , Cmd.none
                             )
 
+                        UserMsg channel str id ->
+                            let
+                                cmd =
+                                    case channel of
+                                        Public ->
+                                            case model.user of
+                                                Anonymous ->
+                                                    Cmd.none
+
+                                                LoggedIn name ->
+                                                    Encode.object
+                                                        [ ( "channel", Encode.string "private" )
+                                                        , ( "to", Encode.string id )
+                                                        , ( "type", Encode.string "user" )
+                                                        , ( "payload"
+                                                          , Encode.object
+                                                                [ ( "id", encodeSocket model.socket )
+                                                                , ( "user", Encode.string name )
+                                                                ]
+                                                          )
+                                                        ]
+                                                        |> Encode.encode 0
+                                                        |> Ports.sendMessage
+
+                                        Private ->
+                                            Cmd.none
+                            in
+                            ( { model
+                                | users = Dict.insert id str model.users
+                              }
+                            , cmd
+                            )
+
                         ExitMsg str ->
                             ( { model
                                 | sockets = Set.remove str model.sockets
+                                , users = Dict.remove str model.users
                               }
                             , Cmd.none
                             )
 
                 Err error ->
                     -- TODO report errors
+                    let
+                        _ =
+                            Debug.log "Elm Decoder error" error
+                    in
                     ( model, Cmd.none )
 
 
@@ -283,9 +373,13 @@ view model =
 
 viewBody : Model -> Html Msg
 viewBody model =
+    let
+        friends =
+            Dict.values model.users |> List.sort
+    in
     case model.game of
         WaitingToPlay ->
-            viewStartPage model.userDraft
+            viewStartPage model.userDraft friends
 
         Playing ->
             let
@@ -307,7 +401,10 @@ viewBody model =
                     , class "flex-row"
                     , class "justify-between"
                     ]
-                    [ viewUser model.user
+                    [ div []
+                        [ viewUser model.user
+                        , viewFriends friends
+                        ]
                     , viewRemaining remaining
                     ]
                 , div
@@ -417,8 +514,25 @@ viewRooms toMsg =
         ]
 
 
-viewStartPage : String -> Html Msg
-viewStartPage draftName =
+viewFriends : List String -> Html Msg
+viewFriends friends =
+    div
+        [ class "font-light text-sm p-1"
+        ]
+        [ div
+            [ class "inline"
+            ]
+            [ text "Friends online: " ]
+        , div
+            [ class "font-bold"
+            , class "inline"
+            ]
+            [ text (String.join " " friends) ]
+        ]
+
+
+viewStartPage : String -> List String -> Html Msg
+viewStartPage draftName friends =
     div
         [ class "w-screen"
         , class "h-screen"
