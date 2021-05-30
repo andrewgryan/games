@@ -1,4 +1,4 @@
-module Page.Index exposing (..)
+module Index exposing (..)
 
 import Browser.Navigation as Navigation exposing (Key)
 import Container
