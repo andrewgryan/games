@@ -1,4 +1,4 @@
-module Page.Index exposing (..)
+module Index exposing (..)
 
 import Browser.Navigation as Navigation exposing (Key)
 import Container
@@ -32,25 +32,12 @@ type Game
 
 
 
--- SOCKET STATUS
-
-
-type Status
-    = NotStarted
-    | Opened
-    | Closed
-
-
-
 -- INIT
 
 
 init : Key -> Model
 init key =
     { key = key
-    , draft = ""
-    , messages = []
-    , status = NotStarted
     , errorMessage = Nothing
     , user = User.anonymous
     , userDraft = ""
@@ -70,9 +57,6 @@ init key =
 type alias Model =
     { user : User
     , userDraft : String
-    , draft : String
-    , messages : List String
-    , status : Status
     , errorMessage : Maybe D.Error
     , quiz : Quiz
     , game : Game
@@ -88,11 +72,8 @@ type alias Model =
 
 
 type Msg
-    = NoOp
-    | DraftChanged String
-    | WebSocket Status
-      -- USER
-    | UserSend
+    = -- USER
+      UserSend
     | UserDraftChanged String
       --LEADERBOARD
     | GotLeaderBoard LeaderBoard
@@ -127,12 +108,6 @@ joinRoomPayload n =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        DraftChanged str ->
-            ( { model | draft = str }, Cmd.none )
-
-        WebSocket status ->
-            ( { model | status = status }, Cmd.none )
-
         -- USER
         UserSend ->
             ( { model
@@ -193,10 +168,6 @@ update msg model =
 
         SelectAnswer answer ->
             ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
-
-        NoOp ->
-            -- TEMPORARY TO PASS COMPILER
-            ( model, Cmd.none )
 
 
 

@@ -9,10 +9,10 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (Html)
+import Index
 import Json.Decode as D
 import Json.Encode as Encode exposing (Value)
 import LeaderBoard exposing (LeaderBoard)
-import Page.Index as Index
 import Ports exposing (messageReceiver)
 import Route exposing (Route(..))
 import Score exposing (Score)
