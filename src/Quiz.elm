@@ -3,6 +3,8 @@ module Quiz exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type Quiz
@@ -17,6 +19,119 @@ type Question
 type Answer
     = Right String
     | Wrong String
+
+
+
+-- DECODE
+
+
+decoder : Decoder Quiz
+decoder =
+    Decode.field "type" Decode.string
+        |> Decode.andThen
+            (\t ->
+                case t of
+                    "QUIZ" ->
+                        Decode.map3 Quiz
+                            (Decode.field "previous" (Decode.list questionDecoder))
+                            (Decode.field "current" questionDecoder)
+                            (Decode.field "remaining" (Decode.list questionDecoder))
+
+                    _ ->
+                        Decode.fail "Could not decode quiz"
+            )
+
+
+questionDecoder : Decoder Question
+questionDecoder =
+    Decode.field "type" Decode.string
+        |> Decode.andThen
+            (\t ->
+                case t of
+                    "QUESTION" ->
+                        Decode.map2 Question
+                            (Decode.field "statement" Decode.string)
+                            (Decode.field "answers" (Decode.list answerDecoder))
+
+                    "ANSWERED" ->
+                        Decode.map3 Answered
+                            (Decode.field "statement" Decode.string)
+                            (Decode.field "answers" (Decode.list answerDecoder))
+                            (Decode.field "answer" answerDecoder)
+
+                    _ ->
+                        Decode.fail "Failed to decode question"
+            )
+
+
+answerDecoder : Decoder Answer
+answerDecoder =
+    Decode.field "type" Decode.string
+        |> Decode.andThen
+            (\t ->
+                case t of
+                    "RIGHT" ->
+                        Decode.map Right
+                            (Decode.field "value" Decode.string)
+
+                    "WRONG" ->
+                        Decode.map Wrong
+                            (Decode.field "value" Decode.string)
+
+                    _ ->
+                        Decode.fail "Could not decode answer"
+            )
+
+
+
+-- ENCODE
+
+
+encodeQuiz : Quiz -> Encode.Value
+encodeQuiz quiz =
+    case quiz of
+        Quiz previous current remaining ->
+            Encode.object
+                [ ( "type", Encode.string "QUIZ" )
+                , ( "previous", Encode.list encodeQuestion previous )
+                , ( "current", encodeQuestion current )
+                , ( "remaining", Encode.list encodeQuestion remaining )
+                ]
+
+
+encodeQuestion : Question -> Encode.Value
+encodeQuestion question =
+    case question of
+        Question str answers ->
+            Encode.object
+                [ ( "type", Encode.string "QUESTION" )
+                , ( "statement", Encode.string str )
+                , ( "answers", Encode.list encodeAnswer answers )
+                ]
+
+        Answered str answers answer ->
+            Encode.object
+                [ ( "type", Encode.string "ANSWERED" )
+                , ( "statement", Encode.string str )
+                , ( "answers", Encode.list encodeAnswer answers )
+                , ( "answer", encodeAnswer answer )
+                ]
+
+
+encodeAnswer : Answer -> Encode.Value
+encodeAnswer answer =
+    case answer of
+        Right str ->
+            Encode.object
+                [ ( "type", Encode.string "RIGHT" )
+                , ( "value", Encode.string str )
+                ]
+
+        Wrong str ->
+            Encode.object
+                [ ( "type", Encode.string "WRONG" )
+                , ( "value", Encode.string str )
+                ]
 
 
 
