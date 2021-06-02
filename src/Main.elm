@@ -20,6 +20,7 @@ import Review
 import Route exposing (Route(..))
 import Score exposing (Score)
 import Set exposing (Set)
+import Socket.ID exposing (ID)
 import Url exposing (Url)
 import User exposing (User(..))
 
@@ -115,8 +116,9 @@ type PortMsg
     = LeaderBoardMsg LeaderBoard
     | ExitMsg String
     | EnterMsg String
-    | JoinMsg Channel String
+    | JoinMsg Channel Socket.ID.ID
     | UserMsg Channel String String
+    | QuizMsg Channel Quiz String
 
 
 type Channel
@@ -145,12 +147,18 @@ payloadDecoder label =
         "join" ->
             D.map2 JoinMsg
                 (D.field "channel" channelDecoder)
-                (D.field "payload" (D.field "id" D.string))
+                (D.field "payload" (D.map Socket.ID.ID (D.field "id" D.string)))
 
         "user" ->
             D.map3 UserMsg
                 (D.field "channel" channelDecoder)
                 (D.field "payload" (D.field "user" D.string))
+                (D.field "payload" (D.field "id" D.string))
+
+        "quiz" ->
+            D.map3 QuizMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "quiz" Quiz.decoder))
                 (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
@@ -321,7 +329,11 @@ update msg model =
                             in
                             ( { model | socket = Just str }, cmd )
 
-                        JoinMsg channel str ->
+                        JoinMsg channel socketID ->
+                            let
+                                str =
+                                    Socket.ID.toString socketID
+                            in
                             ( { model
                                 | sockets = Set.insert str model.sockets
                               }
@@ -360,6 +372,13 @@ update msg model =
                             , cmd
                             )
 
+                        QuizMsg channel quiz socketID ->
+                            let
+                                _ =
+                                    Debug.log "quiz" quiz
+                            in
+                            ( model, Cmd.none )
+
                         ExitMsg str ->
                             ( { model
                                 | sockets = Set.remove str model.sockets
@@ -370,6 +389,10 @@ update msg model =
 
                 Err error ->
                     -- TODO report errors
+                    let
+                        _ =
+                            Debug.log "error" error
+                    in
                     ( model, Cmd.none )
 
 
@@ -652,7 +675,7 @@ viewNav turn quiz =
                             lockInButton LockAnswerIn
 
                         LockedIn ->
-                            waitingForFriendsButton
+                            viewWaitingForFriends
 
                         ReadyForNextTurn ->
                             nextButton True
@@ -743,9 +766,10 @@ lockInButton toMsg =
         ]
 
 
-waitingForFriendsButton : Html Msg
-waitingForFriendsButton =
-    button
+viewWaitingForFriends : Html Msg
+viewWaitingForFriends =
+    -- NOT A BUTTON
+    div
         [ class <|
             String.join " " <|
                 [ "bg-purple-500"
