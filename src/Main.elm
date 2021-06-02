@@ -638,9 +638,11 @@ viewQuiz quiz =
                 [ -- Navigation buttons
                   div
                     [ class "flex justify-end"
-                    , class "bg-red-200"
+                    , class "pb-8"
                     ]
-                    [ nextButton (not (Quiz.answered question))
+                    [ -- nextButton (not (Quiz.answered question))
+                      -- lockInButton
+                      waitingForFriendsButton
                     ]
                 ]
 
@@ -701,6 +703,64 @@ previousButton =
         , onClick PreviousQuestion
         ]
         [ text "Go back" ]
+
+
+lockInButton : Html Msg
+lockInButton =
+    button
+        [ class <|
+            String.join " " <|
+                [ "bg-yellow-400"
+                , "flex-grow"
+                , "uppercase"
+                , "px-4"
+                , "py-6"
+                , "mx-2"
+                ]
+        ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    ]
+            ]
+            [ Heroicons.lockOpen
+            , div [ class "pl-2" ] [ text "Lock answer in" ]
+            ]
+        ]
+
+
+waitingForFriendsButton : Html Msg
+waitingForFriendsButton =
+    button
+        [ class <|
+            String.join " " <|
+                [ "bg-purple-500"
+                , "text-white"
+                , "flex-grow"
+                , "uppercase"
+                , "px-4"
+                , "py-6"
+                , "mx-2"
+                ]
+        ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    , "animate-pulse"
+                    ]
+            ]
+            [ Heroicons.sparkle
+            , div [ class "pl-2" ] [ text "Waiting for friends..." ]
+            ]
+        ]
 
 
 nextButton : Bool -> Html Msg
