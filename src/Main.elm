@@ -64,6 +64,7 @@ init _ url key =
             , socket = Nothing
             , sockets = Set.empty
             , users = Dict.empty
+            , quizzes = Dict.empty
             }
     in
     ( model, Cmd.none )
@@ -88,6 +89,7 @@ type alias Model =
     , socket : Maybe String
     , sockets : Set String
     , users : Dict String String
+    , quizzes : Dict String Quiz
     }
 
 
@@ -374,10 +376,35 @@ update msg model =
 
                         QuizMsg channel quiz socketID ->
                             let
-                                _ =
-                                    Debug.log "quiz" quiz
+                                cmd =
+                                    case channel of
+                                        Public ->
+                                            case model.user of
+                                                Anonymous ->
+                                                    Cmd.none
+
+                                                LoggedIn name ->
+                                                    Encode.object
+                                                        [ ( "channel", Encode.string "private" )
+                                                        , ( "to", Encode.string socketID )
+                                                        , ( "type", Encode.string "quiz" )
+                                                        , ( "payload"
+                                                          , Encode.object
+                                                                [ ( "id", encodeSocket model.socket )
+                                                                , ( "quiz", Quiz.encodeQuiz model.quiz )
+                                                                ]
+                                                          )
+                                                        ]
+                                                        |> Ports.sendMessage
+
+                                        Private ->
+                                            Cmd.none
                             in
-                            ( model, Cmd.none )
+                            ( { model
+                                | quizzes = Dict.insert socketID quiz model.quizzes
+                              }
+                            , cmd
+                            )
 
                         ExitMsg str ->
                             ( { model
