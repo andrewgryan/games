@@ -6,6 +6,24 @@ import Svg exposing (path, svg)
 import Svg.Attributes exposing (..)
 
 
+arrowRight : Html msg
+arrowRight =
+    svg
+        [ Svg.Attributes.class "h-6 w-6"
+        , fill "none"
+        , viewBox "0 0 24 24"
+        , stroke "currentColor"
+        ]
+        [ Svg.path
+            [ strokeLinecap "round"
+            , strokeLinejoin "round"
+            , strokeWidth "2"
+            , d "M14 5l7 7m0 0l-7 7m7-7H3"
+            ]
+            []
+        ]
+
+
 sparkle : Html msg
 sparkle =
     svg

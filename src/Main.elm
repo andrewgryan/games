@@ -611,10 +611,7 @@ primaryButtonStyle : Html.Attribute Msg
 primaryButtonStyle =
     class <|
         String.join " " <|
-            [ "bg-blue-500"
-            , "hover:bg-blue-700"
-            , "text-white"
-            , "font-bold"
+            [ "text-white"
             , "p-4"
             , "py-6"
             ]
@@ -640,9 +637,9 @@ viewQuiz quiz =
                     [ class "flex justify-end"
                     , class "pb-8"
                     ]
-                    [ -- nextButton (not (Quiz.answered question))
-                      -- lockInButton
-                      waitingForFriendsButton
+                    [ nextButton (not (Quiz.answered question))
+                    , lockInButton
+                    , waitingForFriendsButton
                     ]
                 ]
 
@@ -767,11 +764,25 @@ nextButton : Bool -> Html Msg
 nextButton notAnswered =
     button
         [ primaryButtonStyle
+        , class "bg-green-500"
         , class "flex-grow"
         , onClick NextQuestion
         , disabled notAnswered
         ]
-        [ text "Next" ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    , "uppercase"
+                    ]
+            ]
+            [ div [ class "pr-2" ] [ text "To next question" ]
+            , Heroicons.arrowRight
+            ]
+        ]
 
 
 finishButton : Html Msg
