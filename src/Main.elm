@@ -30,8 +30,15 @@ import User exposing (User(..))
 
 type Game
     = WaitingToPlay
-    | Playing
+    | Playing Turn
     | ViewingResults
+
+
+type Turn
+    = Started
+    | LockedIn
+    | WaitingForFriends
+    | ReadyForNextTurn
 
 
 
@@ -97,6 +104,7 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+    | LockAnswerIn
       -- PORT
     | Recv Encode.Value
       -- NAVIGATION
@@ -234,7 +242,7 @@ update msg model =
                         |> Ports.sendMessage
             in
             ( { model
-                | game = Playing
+                | game = Playing Started
                 , user = user
               }
             , cmd
@@ -270,25 +278,24 @@ update msg model =
             ( { model | quiz = Quiz.previousQuestion model.quiz }, Cmd.none )
 
         SelectAnswer answer ->
-            let
-                newModel =
-                    { model | quiz = Quiz.selectAnswer answer model.quiz }
+            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
 
-                -- TODO MOVE THIS TO THE LOCK IT IN BUTTON
+        LockAnswerIn ->
+            let
                 cmd =
                     Encode.object
                         [ ( "channel", Encode.string "public" )
                         , ( "type", Encode.string "quiz" )
                         , ( "payload"
                           , Encode.object
-                                [ ( "id", encodeSocket newModel.socket )
-                                , ( "quiz", Quiz.encodeQuiz newModel.quiz )
+                                [ ( "id", encodeSocket model.socket )
+                                , ( "quiz", Quiz.encodeQuiz model.quiz )
                                 ]
                           )
                         ]
                         |> Ports.sendMessage
             in
-            ( newModel, cmd )
+            ( { model | game = Playing LockedIn }, cmd )
 
         -- PORT
         Recv value ->
@@ -388,8 +395,11 @@ viewBody model =
         WaitingToPlay ->
             viewStartPage model.userDraft friends
 
-        Playing ->
+        Playing turn ->
             let
+                _ =
+                    Debug.log "turn" turn
+
                 remaining =
                     Quiz.getNext model.quiz
 
@@ -637,9 +647,11 @@ viewQuiz quiz =
                     [ class "flex justify-end"
                     , class "pb-8"
                     ]
-                    [ nextButton (not (Quiz.answered question))
-                    , lockInButton
-                    , waitingForFriendsButton
+                    [ if Quiz.answered question then
+                        lockInButton LockAnswerIn
+
+                      else
+                        text ""
                     ]
                 ]
 
@@ -702,8 +714,8 @@ previousButton =
         [ text "Go back" ]
 
 
-lockInButton : Html Msg
-lockInButton =
+lockInButton : Msg -> Html Msg
+lockInButton toMsg =
     button
         [ class <|
             String.join " " <|
@@ -714,6 +726,7 @@ lockInButton =
                 , "py-6"
                 , "mx-2"
                 ]
+        , onClick toMsg
         ]
         [ div
             [ class <|
@@ -779,7 +792,7 @@ nextButton notAnswered =
                     , "uppercase"
                     ]
             ]
-            [ div [ class "pr-2" ] [ text "To next question" ]
+            [ div [ class "px-2" ] [ text "To next question" ]
             , Heroicons.arrowRight
             ]
         ]
