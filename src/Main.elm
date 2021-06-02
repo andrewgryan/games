@@ -271,10 +271,24 @@ update msg model =
 
         SelectAnswer answer ->
             let
+                newModel =
+                    { model | quiz = Quiz.selectAnswer answer model.quiz }
+
+                -- TODO MOVE THIS TO THE LOCK IT IN BUTTON
                 cmd =
-                    Cmd.none
+                    Encode.object
+                        [ ( "channel", Encode.string "public" )
+                        , ( "type", Encode.string "quiz" )
+                        , ( "payload"
+                          , Encode.object
+                                [ ( "id", encodeSocket newModel.socket )
+                                , ( "quiz", Quiz.encodeQuiz newModel.quiz )
+                                ]
+                          )
+                        ]
+                        |> Ports.sendMessage
             in
-            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, cmd )
+            ( newModel, cmd )
 
         -- PORT
         Recv value ->
