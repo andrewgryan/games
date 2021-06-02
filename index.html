@@ -65,9 +65,9 @@
 
             // Connect Elm to/from WebSocket
             app.ports.sendMessage.subscribe((message) => {
-                console.log("SEND TO SERVER", JSON.parse(message))
-                let { type, payload, channel } = JSON.parse(message)
-                socket.emit(channel, JSON.parse(message))
+                console.log("SEND TO SERVER", message)
+                let { type, payload, channel } = message
+                socket.emit(channel, message)
             })
             socket.on("leaderboard", (leaderboard) => {
                 console.log("RECV FROM SERVER", leaderboard)

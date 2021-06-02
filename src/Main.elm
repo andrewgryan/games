@@ -231,7 +231,6 @@ update msg model =
                                 ]
                           )
                         ]
-                        |> Encode.encode 0
                         |> Ports.sendMessage
             in
             ( { model
@@ -271,7 +270,11 @@ update msg model =
             ( { model | quiz = Quiz.previousQuestion model.quiz }, Cmd.none )
 
         SelectAnswer answer ->
-            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
+            let
+                cmd =
+                    Cmd.none
+            in
+            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, cmd )
 
         -- PORT
         Recv value ->
@@ -294,7 +297,6 @@ update msg model =
                                                 ]
                                           )
                                         ]
-                                        |> Encode.encode 0
                                         |> Ports.sendMessage
                             in
                             ( { model | socket = Just str }, cmd )
@@ -327,7 +329,6 @@ update msg model =
                                                                 ]
                                                           )
                                                         ]
-                                                        |> Encode.encode 0
                                                         |> Ports.sendMessage
 
                                         Private ->
