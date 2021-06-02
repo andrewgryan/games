@@ -37,7 +37,6 @@ type Game
 type Turn
     = Started
     | LockedIn
-    | WaitingForFriends
     | ReadyForNextTurn
 
 
@@ -432,7 +431,9 @@ viewBody model =
                     ]
                     [ Quiz.viewQuestion SelectAnswer question
                     ]
-                , viewQuiz model.quiz
+                , div [ Container.style ]
+                    [ viewNav turn model.quiz
+                    ]
                 ]
 
         ViewingResults ->
@@ -627,8 +628,8 @@ primaryButtonStyle =
             ]
 
 
-viewQuiz : Quiz -> Html Msg
-viewQuiz quiz =
+viewNav : Turn -> Quiz -> Html Msg
+viewNav turn quiz =
     let
         previous =
             Quiz.getPrevious quiz
@@ -641,38 +642,37 @@ viewQuiz quiz =
     in
     case previous of
         [] ->
-            div [ Container.style ]
-                [ -- Navigation buttons
-                  div
-                    [ class "flex justify-end"
-                    , class "pb-8"
-                    ]
-                    [ if Quiz.answered question then
-                        lockInButton LockAnswerIn
+            div
+                [ class "flex justify-end"
+                , class "pb-8"
+                ]
+                [ if Quiz.answered question then
+                    case turn of
+                        Started ->
+                            lockInButton LockAnswerIn
 
-                      else
-                        text ""
-                    ]
+                        LockedIn ->
+                            waitingForFriendsButton
+
+                        ReadyForNextTurn ->
+                            nextButton True
+
+                  else
+                    text ""
                 ]
 
         _ ->
             case remaining of
                 [] ->
-                    div [ Container.style ]
-                        [ -- Navigation buttons
-                          div [ class "flex justify-end" ]
-                            [ previousButton
-                            , finishButton
-                            ]
+                    div [ class "flex justify-end" ]
+                        [ previousButton
+                        , finishButton
                         ]
 
                 _ ->
-                    div [ Container.style ]
-                        [ -- Navigation buttons
-                          div [ class "flex justify-end" ]
-                            [ previousButton
-                            , nextButton (not (Quiz.answered question))
-                            ]
+                    div [ class "flex justify-end" ]
+                        [ previousButton
+                        , nextButton (not (Quiz.answered question))
                         ]
 
 
