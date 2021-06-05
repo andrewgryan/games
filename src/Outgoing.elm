@@ -20,26 +20,22 @@ answer user =
     Answer user
 
 
-encode : Outgoing -> String
+encode : Outgoing -> Encode.Value
 encode outgoing =
     case outgoing of
         Answer user ->
-            Encode.encode 0
-                (Encode.object
-                    [ ( "type", Encode.string "answer" )
-                    , ( "payload"
-                      , Encode.object
-                            [ ( "user", User.encode user )
-                            ]
-                      )
-                    ]
-                )
+            Encode.object
+                [ ( "type", Encode.string "answer" )
+                , ( "payload"
+                  , Encode.object
+                        [ ( "user", User.encode user )
+                        ]
+                  )
+                ]
 
         SaveScore score ->
-            Encode.encode 0
-                (Encode.object
-                    [ ( "type", Encode.string "score" )
-                    , ( "channel", Encode.string "score" )
-                    , ( "payload", Score.encode score )
-                    ]
-                )
+            Encode.object
+                [ ( "type", Encode.string "score" )
+                , ( "channel", Encode.string "score" )
+                , ( "payload", Score.encode score )
+                ]

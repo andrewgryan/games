@@ -1,9 +1,45 @@
-module Heroicons exposing (chevronRight, menu, pencil)
+module Heroicons exposing (..)
 
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (..)
+
+
+arrowRight : Html msg
+arrowRight =
+    svg
+        [ Svg.Attributes.class "h-6 w-6"
+        , fill "none"
+        , viewBox "0 0 24 24"
+        , stroke "currentColor"
+        ]
+        [ Svg.path
+            [ strokeLinecap "round"
+            , strokeLinejoin "round"
+            , strokeWidth "2"
+            , d "M14 5l7 7m0 0l-7 7m7-7H3"
+            ]
+            []
+        ]
+
+
+sparkle : Html msg
+sparkle =
+    svg
+        [ Svg.Attributes.class "h-6 w-6"
+        , fill "none"
+        , viewBox "0 0 24 24"
+        , stroke "currentColor"
+        ]
+        [ Svg.path
+            [ strokeLinecap "round"
+            , strokeLinejoin "round"
+            , strokeWidth "2"
+            , d "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            ]
+            []
+        ]
 
 
 pencil : Html msg
@@ -59,6 +95,42 @@ chevronRight =
             , strokeLinejoin "round"
             , strokeWidth "2"
             , d "M9 5l7 7-7 7"
+            ]
+            []
+        ]
+
+
+chevronDoubleRight : Html msg
+chevronDoubleRight =
+    svg
+        [ Svg.Attributes.class "h-6 w-6"
+        , fill "none"
+        , viewBox "0 0 24 24"
+        , stroke "currentColor"
+        ]
+        [ Svg.path
+            [ strokeLinecap "round"
+            , strokeLinejoin "round"
+            , strokeWidth "2"
+            , d "M13 5l7 7-7 7M5 5l7 7-7 7"
+            ]
+            []
+        ]
+
+
+lockOpen : Html msg
+lockOpen =
+    svg
+        [ Svg.Attributes.class "h-6 w-6"
+        , fill "none"
+        , viewBox "0 0 24 24"
+        , stroke "currentColor"
+        ]
+        [ Svg.path
+            [ strokeLinecap "round"
+            , strokeLinejoin "round"
+            , strokeWidth "2"
+            , d "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
             ]
             []
         ]

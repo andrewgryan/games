@@ -20,6 +20,7 @@ import Review
 import Route exposing (Route(..))
 import Score exposing (Score)
 import Set exposing (Set)
+import Socket.ID exposing (ID)
 import Url exposing (Url)
 import User exposing (User(..))
 
@@ -30,8 +31,14 @@ import User exposing (User(..))
 
 type Game
     = WaitingToPlay
-    | Playing
+    | Playing Turn
     | ViewingResults
+
+
+type Turn
+    = Started
+    | LockedIn
+    | ReadyForNextTurn
 
 
 
@@ -57,6 +64,7 @@ init _ url key =
             , socket = Nothing
             , sockets = Set.empty
             , users = Dict.empty
+            , quizzes = Dict.empty
             }
     in
     ( model, Cmd.none )
@@ -81,6 +89,7 @@ type alias Model =
     , socket : Maybe String
     , sockets : Set String
     , users : Dict String String
+    , quizzes : Dict String Quiz
     }
 
 
@@ -97,6 +106,7 @@ type Msg
     | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
+    | LockAnswerIn
       -- PORT
     | Recv Encode.Value
       -- NAVIGATION
@@ -108,8 +118,9 @@ type PortMsg
     = LeaderBoardMsg LeaderBoard
     | ExitMsg String
     | EnterMsg String
-    | JoinMsg Channel String
+    | JoinMsg Channel Socket.ID.ID
     | UserMsg Channel String String
+    | QuizMsg Channel Quiz String
 
 
 type Channel
@@ -138,12 +149,18 @@ payloadDecoder label =
         "join" ->
             D.map2 JoinMsg
                 (D.field "channel" channelDecoder)
-                (D.field "payload" (D.field "id" D.string))
+                (D.field "payload" (D.map Socket.ID.ID (D.field "id" D.string)))
 
         "user" ->
             D.map3 UserMsg
                 (D.field "channel" channelDecoder)
                 (D.field "payload" (D.field "user" D.string))
+                (D.field "payload" (D.field "id" D.string))
+
+        "quiz" ->
+            D.map3 QuizMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.field "quiz" Quiz.decoder))
                 (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
@@ -231,11 +248,10 @@ update msg model =
                                 ]
                           )
                         ]
-                        |> Encode.encode 0
                         |> Ports.sendMessage
             in
             ( { model
-                | game = Playing
+                | game = Playing Started
                 , user = user
               }
             , cmd
@@ -273,6 +289,23 @@ update msg model =
         SelectAnswer answer ->
             ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
 
+        LockAnswerIn ->
+            let
+                cmd =
+                    Encode.object
+                        [ ( "channel", Encode.string "public" )
+                        , ( "type", Encode.string "quiz" )
+                        , ( "payload"
+                          , Encode.object
+                                [ ( "id", encodeSocket model.socket )
+                                , ( "quiz", Quiz.encodeQuiz model.quiz )
+                                ]
+                          )
+                        ]
+                        |> Ports.sendMessage
+            in
+            ( { model | game = Playing LockedIn }, cmd )
+
         -- PORT
         Recv value ->
             case D.decodeValue portDecoder value of
@@ -294,12 +327,15 @@ update msg model =
                                                 ]
                                           )
                                         ]
-                                        |> Encode.encode 0
                                         |> Ports.sendMessage
                             in
                             ( { model | socket = Just str }, cmd )
 
-                        JoinMsg channel str ->
+                        JoinMsg channel socketID ->
+                            let
+                                str =
+                                    Socket.ID.toString socketID
+                            in
                             ( { model
                                 | sockets = Set.insert str model.sockets
                               }
@@ -327,7 +363,6 @@ update msg model =
                                                                 ]
                                                           )
                                                         ]
-                                                        |> Encode.encode 0
                                                         |> Ports.sendMessage
 
                                         Private ->
@@ -335,6 +370,41 @@ update msg model =
                             in
                             ( { model
                                 | users = Dict.insert id str model.users
+                              }
+                            , cmd
+                            )
+
+                        QuizMsg channel quiz socketID ->
+                            let
+                                cmd =
+                                    case channel of
+                                        Public ->
+                                            -- REPLY WITH CURRENT QUIZ
+                                            Encode.object
+                                                [ ( "channel", Encode.string "private" )
+                                                , ( "to", Encode.string socketID )
+                                                , ( "type", Encode.string "quiz" )
+                                                , ( "payload"
+                                                  , Encode.object
+                                                        [ ( "id", encodeSocket model.socket )
+                                                        , ( "quiz", Quiz.encodeQuiz model.quiz )
+                                                        ]
+                                                  )
+                                                ]
+                                                |> Ports.sendMessage
+
+                                        Private ->
+                                            Cmd.none
+
+                                quizzes =
+                                    Dict.insert socketID quiz model.quizzes
+                            in
+                            ( { model
+                                | quizzes = quizzes
+                                , game =
+                                    updateTurn model.quiz
+                                        quizzes
+                                        (Dict.keys model.users)
                               }
                             , cmd
                             )
@@ -349,7 +419,29 @@ update msg model =
 
                 Err error ->
                     -- TODO report errors
+                    let
+                        _ =
+                            Debug.log "error" error
+                    in
                     ( model, Cmd.none )
+
+
+updateTurn : Quiz -> Dict String Quiz -> List String -> Game
+updateTurn quiz quizzes sockets =
+    -- TODO add business logic here
+    let
+        allAnswered =
+            sockets
+                |> List.map (\s -> Dict.get s quizzes)
+                |> List.map (Maybe.map Quiz.getQuestion)
+                |> List.map (Maybe.map Quiz.answered)
+                |> List.all (Maybe.withDefault False)
+    in
+    if allAnswered then
+        Playing ReadyForNextTurn
+
+    else
+        Playing LockedIn
 
 
 
@@ -373,8 +465,11 @@ viewBody model =
         WaitingToPlay ->
             viewStartPage model.userDraft friends
 
-        Playing ->
+        Playing turn ->
             let
+                _ =
+                    Debug.log "turn" turn
+
                 remaining =
                     Quiz.getNext model.quiz
 
@@ -407,7 +502,9 @@ viewBody model =
                     ]
                     [ Quiz.viewQuestion SelectAnswer question
                     ]
-                , viewQuiz model.quiz
+                , div [ Container.style ]
+                    [ viewNav turn model.quiz
+                    ]
                 ]
 
         ViewingResults ->
@@ -596,17 +693,14 @@ primaryButtonStyle : Html.Attribute Msg
 primaryButtonStyle =
     class <|
         String.join " " <|
-            [ "bg-blue-500"
-            , "hover:bg-blue-700"
-            , "text-white"
-            , "font-bold"
+            [ "text-white"
             , "p-4"
             , "py-6"
             ]
 
 
-viewQuiz : Quiz -> Html Msg
-viewQuiz quiz =
+viewNav : Turn -> Quiz -> Html Msg
+viewNav turn quiz =
     let
         previous =
             Quiz.getPrevious quiz
@@ -619,34 +713,37 @@ viewQuiz quiz =
     in
     case previous of
         [] ->
-            div [ Container.style ]
-                [ -- Navigation buttons
-                  div
-                    [ class "flex justify-end"
-                    , class "bg-red-200"
-                    ]
-                    [ nextButton (not (Quiz.answered question))
-                    ]
+            div
+                [ class "flex justify-end"
+                , class "pb-8"
+                ]
+                [ if Quiz.answered question then
+                    case turn of
+                        Started ->
+                            lockInButton LockAnswerIn
+
+                        LockedIn ->
+                            viewWaitingForFriends
+
+                        ReadyForNextTurn ->
+                            nextButton False
+
+                  else
+                    text ""
                 ]
 
         _ ->
             case remaining of
                 [] ->
-                    div [ Container.style ]
-                        [ -- Navigation buttons
-                          div [ class "flex justify-end" ]
-                            [ previousButton
-                            , finishButton
-                            ]
+                    div [ class "flex justify-end" ]
+                        [ previousButton
+                        , finishButton
                         ]
 
                 _ ->
-                    div [ Container.style ]
-                        [ -- Navigation buttons
-                          div [ class "flex justify-end" ]
-                            [ previousButton
-                            , nextButton (not (Quiz.answered question))
-                            ]
+                    div [ class "flex justify-end" ]
+                        [ previousButton
+                        , nextButton (not (Quiz.answered question))
                         ]
 
 
@@ -688,15 +785,89 @@ previousButton =
         [ text "Go back" ]
 
 
+lockInButton : Msg -> Html Msg
+lockInButton toMsg =
+    button
+        [ class <|
+            String.join " " <|
+                [ "bg-yellow-400"
+                , "flex-grow"
+                , "uppercase"
+                , "px-4"
+                , "py-6"
+                , "mx-2"
+                ]
+        , onClick toMsg
+        ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    ]
+            ]
+            [ Heroicons.lockOpen
+            , div [ class "pl-2" ] [ text "Lock answer in" ]
+            ]
+        ]
+
+
+viewWaitingForFriends : Html Msg
+viewWaitingForFriends =
+    -- NOT A BUTTON
+    div
+        [ class <|
+            String.join " " <|
+                [ "bg-purple-500"
+                , "text-white"
+                , "flex-grow"
+                , "uppercase"
+                , "px-4"
+                , "py-6"
+                , "mx-2"
+                ]
+        ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    , "animate-pulse"
+                    ]
+            ]
+            [ Heroicons.sparkle
+            , div [ class "pl-2" ] [ text "Waiting for friends..." ]
+            ]
+        ]
+
+
 nextButton : Bool -> Html Msg
-nextButton notAnswered =
+nextButton isDisabled =
     button
         [ primaryButtonStyle
+        , class "bg-green-500"
         , class "flex-grow"
         , onClick NextQuestion
-        , disabled notAnswered
+        , disabled isDisabled
         ]
-        [ text "Next" ]
+        [ div
+            [ class <|
+                String.join " " <|
+                    [ "flex"
+                    , "flex-row"
+                    , "justify-center"
+                    , "items-center"
+                    , "uppercase"
+                    ]
+            ]
+            [ div [ class "px-2" ] [ text "To next question" ]
+            , Heroicons.arrowRight
+            ]
+        ]
 
 
 finishButton : Html Msg
