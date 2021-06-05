@@ -14,7 +14,7 @@ import Json.Decode as D
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
-import Player exposing (Player)
+import Player exposing (Player(..))
 import Ports exposing (messageReceiver, sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
 import Review
@@ -32,13 +32,8 @@ import User exposing (User(..))
 
 type Game
     = WaitingToPlay
-    | Playing Turn
+    | Playing
     | ViewingResults
-
-
-type Turn
-    = Started
-    | LockedIn
 
 
 
@@ -253,7 +248,7 @@ update msg model =
                         |> Ports.sendMessage
             in
             ( { model
-                | game = Playing Started
+                | game = Playing
                 , user = user
               }
             , cmd
@@ -295,6 +290,10 @@ update msg model =
             let
                 newPlayer =
                     Player.done
+                        (model.quiz
+                            |> Quiz.getQuestion
+                            |> Quiz.getStatement
+                        )
 
                 cmd =
                     Encode.object
@@ -309,12 +308,22 @@ update msg model =
                         ]
                         |> Ports.sendMessage
             in
-            ( { model
-                | game = Playing LockedIn
-                , player = newPlayer
-              }
-            , cmd
-            )
+            if Player.allDone newPlayer (Dict.values model.sockets) then
+                -- ALL PLAYERS DONE
+                ( { model
+                    | quiz = Quiz.nextQuestion model.quiz
+                    , player = Thinking
+                  }
+                , cmd
+                )
+
+            else
+                -- WAIT FOR OTHER PLAYERS
+                ( { model
+                    | player = newPlayer
+                  }
+                , cmd
+                )
 
         -- PORT
         Recv value ->
@@ -389,7 +398,6 @@ update msg model =
                                 cmd =
                                     case channel of
                                         Public ->
-                                            -- REPLY WITH CURRENT QUIZ
                                             Encode.object
                                                 [ ( "channel", Encode.string "private" )
                                                 , ( "to", Encode.string socketID )
@@ -409,11 +417,23 @@ update msg model =
                                 sockets =
                                     Dict.insert socketID player model.sockets
                             in
-                            ( { model
-                                | sockets = sockets
-                              }
-                            , cmd
-                            )
+                            if Player.allDone model.player (Dict.values sockets) then
+                                -- ALL DONE
+                                ( { model
+                                    | sockets = sockets
+                                    , quiz = Quiz.nextQuestion model.quiz
+                                    , player = Thinking
+                                  }
+                                , cmd
+                                )
+
+                            else
+                                -- WAIT FOR EVERYONE
+                                ( { model
+                                    | sockets = sockets
+                                  }
+                                , cmd
+                                )
 
                         ExitMsg str ->
                             ( { model
@@ -453,12 +473,12 @@ viewBody model =
         WaitingToPlay ->
             viewStartPage model.userDraft friends
 
-        Playing turn ->
-            case turn of
-                LockedIn ->
+        Playing ->
+            case model.player of
+                Done _ ->
                     viewWaitingForFriends
 
-                Started ->
+                Thinking ->
                     let
                         remaining =
                             Quiz.getNext model.quiz
@@ -692,41 +712,19 @@ primaryButtonStyle =
 viewNav : Quiz -> Html Msg
 viewNav quiz =
     let
-        previous =
-            Quiz.getPrevious quiz
-
         question =
             Quiz.getQuestion quiz
-
-        remaining =
-            Quiz.getNext quiz
     in
-    case previous of
-        [] ->
-            div
-                [ class "flex justify-end"
-                , class "pb-8"
-                ]
-                [ if Quiz.answered question then
-                    lockInButton LockAnswerIn
+    div
+        [ class "flex justify-end"
+        , class "pb-8"
+        ]
+        [ if Quiz.answered question then
+            lockInButton LockAnswerIn
 
-                  else
-                    text ""
-                ]
-
-        _ ->
-            case remaining of
-                [] ->
-                    div [ class "flex justify-end" ]
-                        [ previousButton
-                        , finishButton
-                        ]
-
-                _ ->
-                    div [ class "flex justify-end" ]
-                        [ previousButton
-                        , nextButton (not (Quiz.answered question))
-                        ]
+          else
+            text ""
+        ]
 
 
 viewRemaining : List Question -> Html Msg
@@ -798,7 +796,6 @@ lockInButton toMsg =
 
 viewWaitingForFriends : Html Msg
 viewWaitingForFriends =
-    -- NOT A BUTTON
     div
         [ class <|
             String.join " " <|

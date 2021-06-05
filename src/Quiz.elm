@@ -163,6 +163,16 @@ answered question =
             True
 
 
+getStatement : Question -> String
+getStatement question =
+    case question of
+        Question str _ ->
+            str
+
+        Answered str _ _ ->
+            str
+
+
 
 -- MOVE
 
