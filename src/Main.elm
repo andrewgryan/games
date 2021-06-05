@@ -505,15 +505,20 @@ viewBody model =
                             , viewRemaining remaining
                             ]
                         , div
-                            [ class "flex-grow"
-                            , class "flex"
+                            [ class "flex"
+                            , class "flex-col"
                             , class "justify-center"
-                            , class "items-center"
+                            , class "flex-grow"
+                            , class "space-y-4"
                             ]
-                            [ Quiz.viewQuestion SelectAnswer question
-                            ]
-                        , div [ Container.style ]
-                            [ viewNav model.quiz
+                            [ div
+                                [ class "flex"
+                                , class "justify-center"
+                                , class "items-center"
+                                ]
+                                [ Quiz.viewQuestion SelectAnswer question
+                                ]
+                            , viewNav model.quiz
                             ]
                         ]
 
@@ -648,7 +653,7 @@ viewStartPage draftName friends =
                     , "items-center"
                     , "flex-grow"
                     , "px-2"
-                    , "space-y-2"
+                    , "space-y-4"
                     ]
             ]
             [ div
@@ -661,7 +666,6 @@ viewStartPage draftName friends =
                             , "text-gray-700"
                             , "text-md"
                             , "font-bold"
-                            , "mb-2"
                             ]
                     ]
                     [ text "Enter name:" ]
@@ -688,10 +692,17 @@ viewStartPage draftName friends =
             , if draftName /= "" then
                 button
                     [ onClick StartQuiz
-                    , primaryButtonStyle
-                    , class "w-full"
+                    , class <|
+                        String.join " " <|
+                            [ "w-full"
+                            , "p-4"
+                            , "bg-blue-500"
+                            , "uppercase"
+                            , "text-xl"
+                            , "text-white"
+                            ]
                     ]
-                    [ text "Start Quiz!" ]
+                    [ text "Start Quiz" ]
 
               else
                 text ""
