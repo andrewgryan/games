@@ -714,13 +714,21 @@ viewNav quiz =
     let
         question =
             Quiz.getQuestion quiz
+
+        remaining =
+            Quiz.getNext quiz
     in
     div
-        [ class "flex justify-end"
+        [ class "flex"
         , class "pb-8"
         ]
         [ if Quiz.answered question then
-            lockInButton LockAnswerIn
+            case remaining of
+                [] ->
+                    finishButton FinishQuiz
+
+                _ ->
+                    lockInButton LockAnswerIn
 
           else
             text ""
@@ -856,14 +864,20 @@ nextButton isDisabled =
         ]
 
 
-finishButton : Html Msg
-finishButton =
+finishButton : Msg -> Html Msg
+finishButton toMsg =
     button
         [ primaryButtonStyle
-        , class "flex-grow"
-        , onClick FinishQuiz
+        , class <|
+            String.join " " <|
+                [ "flex-grow"
+                , "bg-blue-600"
+                , "uppercase"
+                , "mx-2"
+                ]
+        , onClick toMsg
         ]
-        [ text "Finish" ]
+        [ text "Finish quiz" ]
 
 
 viewError : Maybe D.Error -> Html Msg
