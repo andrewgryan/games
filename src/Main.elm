@@ -54,7 +54,7 @@ init _ url key =
             , leaderBoard =
                 LeaderBoard.empty
             , quiz = Quiz.second
-            , player = Player.thinking
+            , player = Player.thinking 0
 
             -- INTER-APP COMMS
             , socket = Nothing
@@ -291,8 +291,7 @@ update msg model =
                 newPlayer =
                     Player.done
                         (model.quiz
-                            |> Quiz.getQuestion
-                            |> Quiz.getStatement
+                            |> Quiz.getQuestionIndex
                         )
 
                 cmd =
@@ -310,9 +309,16 @@ update msg model =
             in
             case Player.chooseMove newPlayer (Dict.values model.sockets) of
                 Forward ->
+                    let
+                        quiz =
+                            Quiz.nextQuestion model.quiz
+
+                        questionIndex =
+                            Quiz.getQuestionIndex quiz
+                    in
                     ( { model
-                        | quiz = Quiz.nextQuestion model.quiz
-                        , player = Thinking
+                        | quiz = quiz
+                        , player = Thinking questionIndex
                       }
                     , cmd
                     )
@@ -356,7 +362,7 @@ update msg model =
                                     Socket.ID.toString socketID
                             in
                             ( { model
-                                | sockets = Dict.insert str Player.thinking model.sockets
+                                | sockets = Dict.insert str (Player.thinking 0) model.sockets
                               }
                             , Cmd.none
                             )
@@ -420,10 +426,17 @@ update msg model =
                             case Player.chooseMove model.player (Dict.values sockets) of
                                 Forward ->
                                     -- ALL DONE
+                                    let
+                                        quiz =
+                                            Quiz.nextQuestion model.quiz
+
+                                        questionIndex =
+                                            Quiz.getQuestionIndex quiz
+                                    in
                                     ( { model
                                         | sockets = sockets
-                                        , quiz = Quiz.nextQuestion model.quiz
-                                        , player = Thinking
+                                        , quiz = quiz
+                                        , player = Thinking questionIndex
                                       }
                                     , cmd
                                     )
@@ -479,7 +492,7 @@ viewBody model =
                 Done _ ->
                     viewWaitingForFriends
 
-                Thinking ->
+                Thinking _ ->
                     let
                         remaining =
                             Quiz.getNext model.quiz

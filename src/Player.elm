@@ -6,8 +6,8 @@ import Quiz exposing (Question)
 
 
 type Player
-    = Thinking
-    | Done String
+    = Thinking Int
+    | Done Int
 
 
 type Move
@@ -15,24 +15,24 @@ type Move
     | Wait
 
 
-thinking : Player
-thinking =
-    Thinking
+thinking : Int -> Player
+thinking questionIndex =
+    Thinking questionIndex
 
 
-done : String -> Player
-done statement =
-    Done statement
+done : Int -> Player
+done questionIndex =
+    Done questionIndex
 
 
 chooseMove : Player -> List Player -> Move
 chooseMove player players =
     case player of
-        Thinking ->
+        Thinking _ ->
             Wait
 
-        Done statement ->
-            if List.all (\p -> p == Done statement) players then
+        Done questionIndex ->
+            if List.all (\p -> p == Done questionIndex) players then
                 Forward
                 -- TODO add catch up logic
 
@@ -47,15 +47,16 @@ chooseMove player players =
 encode : Player -> Encode.Value
 encode player =
     case player of
-        Thinking ->
+        Thinking questionIndex ->
             Encode.object
                 [ ( "type", Encode.string "THINKING" )
+                , ( "questionIndex", Encode.int questionIndex )
                 ]
 
-        Done statement ->
+        Done questionIndex ->
             Encode.object
                 [ ( "type", Encode.string "DONE" )
-                , ( "statement", Encode.string statement )
+                , ( "questionIndex", Encode.int questionIndex )
                 ]
 
 
@@ -70,10 +71,10 @@ decoder =
             (\t ->
                 case t of
                     "THINKING" ->
-                        Decode.succeed Thinking
+                        Decode.map Thinking (Decode.field "questionIndex" Decode.int)
 
                     "DONE" ->
-                        Decode.map Done (Decode.field "statement" Decode.string)
+                        Decode.map Done (Decode.field "questionIndex" Decode.int)
 
                     _ ->
                         Decode.fail "Not a valid Player encoding"

@@ -148,6 +148,11 @@ getQuestion (Quiz _ question _) =
     question
 
 
+getQuestionIndex : Quiz -> Int
+getQuestionIndex (Quiz previous _ _) =
+    List.length previous
+
+
 getNext : Quiz -> List Question
 getNext (Quiz _ _ next) =
     next
