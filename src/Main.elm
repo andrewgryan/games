@@ -10,6 +10,7 @@ import Heroicons exposing (menu, pencil)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
+import Http
 import Json.Decode as D
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
@@ -49,6 +50,12 @@ init _ url key =
             , user = User.anonymous
             , userDraft = ""
 
+            -- ADMIN
+            , adminText = ""
+
+            -- ROUTING
+            , route = Route.fromUrl url
+
             -- QUIZ
             , game = WaitingToPlay
             , leaderBoard =
@@ -78,6 +85,12 @@ type alias Model =
     , game : Game
     , player : Player
     , leaderBoard : LeaderBoard
+
+    -- ADMIN
+    , adminText : String
+
+    -- ROUTING
+    , route : Route
 
     -- Navigation
     , key : Navigation.Key
@@ -109,6 +122,9 @@ type Msg
       -- NAVIGATION
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+      -- ADMIN
+    | ClearScoreboard
+    | GotText (Result Http.Error String)
 
 
 type PortMsg
@@ -204,6 +220,25 @@ encodeSocket maybeSocket =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        -- ADMIN
+        ClearScoreboard ->
+            let
+                cmd =
+                    Http.get
+                        { url = "/clear"
+                        , expect = Http.expectString GotText
+                        }
+            in
+            ( model, cmd )
+
+        GotText result ->
+            case result of
+                Ok str ->
+                    ( { model | adminText = str }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
         -- NAVIGATION
         LinkClicked urlRequest ->
             case urlRequest of
@@ -221,9 +256,7 @@ update msg model =
                 route =
                     Route.fromUrl url
             in
-            case route of
-                Index ->
-                    init () url model.key
+            ( { model | route = route }, Cmd.none )
 
         UserDraftChanged str ->
             ( { model | userDraft = str }, Cmd.none )
@@ -472,9 +505,44 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-    { body = [ viewBody model ]
-    , title = "The Quiet Ryan's"
-    }
+    case model.route of
+        Index ->
+            { body = [ viewBody model ]
+            , title = "The Quiet Ryan's"
+            }
+
+        Admin ->
+            { body = [ viewAdmin model.adminText ]
+            , title = "Admin"
+            }
+
+
+viewAdmin : String -> Html Msg
+viewAdmin str =
+    div
+        [ class <|
+            String.join " " <|
+                [ "flex"
+                , "flex-col"
+                , "justify-center"
+                , "items-center"
+                , "h-screen"
+                ]
+        ]
+        [ button
+            [ class <|
+                String.join " " <|
+                    [ "border-red-600"
+                    , "border-2"
+                    , "text-red-600"
+                    , "p-4"
+                    , "mx-2"
+                    ]
+            , onClick ClearScoreboard
+            ]
+            [ text "Clear scoreboard" ]
+        , div [] [ text str ]
+        ]
 
 
 viewBody : Model -> Html Msg

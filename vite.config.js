@@ -11,6 +11,11 @@ module.exports = {
                 changeOrigin: true,
                 safe: false,
                 ws: true
+            },
+            '/clear': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                safe: false
             }
         }
     }
