@@ -445,10 +445,10 @@ update msg model =
 
                 Err error ->
                     -- TODO report errors
-                    let
-                        _ =
-                            Debug.log "error" error
-                    in
+                    -- let
+                    --     _ =
+                    --         Debug.log "error" error
+                    -- in
                     ( model, Cmd.none )
 
 
