@@ -14,6 +14,7 @@ import Json.Decode as D
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
+import Player exposing (Player)
 import Ports exposing (messageReceiver, sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
 import Review
@@ -58,10 +59,11 @@ init _ url key =
             , leaderBoard =
                 LeaderBoard.empty
             , quiz = Quiz.second
+            , player = Player.thinking
 
             -- INTER-APP COMMS
             , socket = Nothing
-            , sockets = Set.empty
+            , sockets = Dict.empty
             , users = Dict.empty
             , quizzes = Dict.empty
             }
@@ -79,6 +81,7 @@ type alias Model =
     , errorMessage : Maybe D.Error
     , quiz : Quiz
     , game : Game
+    , player : Player
     , leaderBoard : LeaderBoard
 
     -- Navigation
@@ -86,7 +89,7 @@ type alias Model =
 
     -- Inter-app communication
     , socket : Maybe String
-    , sockets : Set String
+    , sockets : Dict String Player
     , users : Dict String String
     , quizzes : Dict String Quiz
     }
@@ -119,7 +122,7 @@ type PortMsg
     | EnterMsg String
     | JoinMsg Channel Socket.ID.ID
     | UserMsg Channel String String
-    | QuizMsg Channel Quiz String
+    | PlayerMsg Channel Player String
 
 
 type Channel
@@ -156,10 +159,10 @@ payloadDecoder label =
                 (D.field "payload" (D.field "user" D.string))
                 (D.field "payload" (D.field "id" D.string))
 
-        "quiz" ->
-            D.map3 QuizMsg
+        "player" ->
+            D.map3 PlayerMsg
                 (D.field "channel" channelDecoder)
-                (D.field "payload" (D.field "quiz" Quiz.decoder))
+                (D.field "payload" (D.field "player" Player.decoder))
                 (D.field "payload" (D.field "id" D.string))
 
         "exit" ->
@@ -290,20 +293,28 @@ update msg model =
 
         LockAnswerIn ->
             let
+                newPlayer =
+                    Player.done
+
                 cmd =
                     Encode.object
                         [ ( "channel", Encode.string "public" )
-                        , ( "type", Encode.string "quiz" )
+                        , ( "type", Encode.string "player" )
                         , ( "payload"
                           , Encode.object
                                 [ ( "id", encodeSocket model.socket )
-                                , ( "quiz", Quiz.encodeQuiz model.quiz )
+                                , ( "player", Player.encode newPlayer )
                                 ]
                           )
                         ]
                         |> Ports.sendMessage
             in
-            ( { model | game = Playing LockedIn }, cmd )
+            ( { model
+                | game = Playing LockedIn
+                , player = newPlayer
+              }
+            , cmd
+            )
 
         -- PORT
         Recv value ->
@@ -336,7 +347,7 @@ update msg model =
                                     Socket.ID.toString socketID
                             in
                             ( { model
-                                | sockets = Set.insert str model.sockets
+                                | sockets = Dict.insert str Player.thinking model.sockets
                               }
                             , Cmd.none
                             )
@@ -373,7 +384,7 @@ update msg model =
                             , cmd
                             )
 
-                        QuizMsg channel quiz socketID ->
+                        PlayerMsg channel player socketID ->
                             let
                                 cmd =
                                     case channel of
@@ -382,11 +393,11 @@ update msg model =
                                             Encode.object
                                                 [ ( "channel", Encode.string "private" )
                                                 , ( "to", Encode.string socketID )
-                                                , ( "type", Encode.string "quiz" )
+                                                , ( "type", Encode.string "player" )
                                                 , ( "payload"
                                                   , Encode.object
                                                         [ ( "id", encodeSocket model.socket )
-                                                        , ( "quiz", Quiz.encodeQuiz model.quiz )
+                                                        , ( "player", Player.encode model.player )
                                                         ]
                                                   )
                                                 ]
@@ -395,18 +406,18 @@ update msg model =
                                         Private ->
                                             Cmd.none
 
-                                quizzes =
-                                    Dict.insert socketID quiz model.quizzes
+                                sockets =
+                                    Dict.insert socketID player model.sockets
                             in
                             ( { model
-                                | quizzes = quizzes
+                                | sockets = sockets
                               }
                             , cmd
                             )
 
                         ExitMsg str ->
                             ( { model
-                                | sockets = Set.remove str model.sockets
+                                | sockets = Dict.remove str model.sockets
                                 , users = Dict.remove str model.users
                               }
                             , Cmd.none
