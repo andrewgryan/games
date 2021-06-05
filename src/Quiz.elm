@@ -239,7 +239,7 @@ allQuestions : Quiz -> List Question
 allQuestions quiz =
     case quiz of
         Quiz previous current next ->
-            previous ++ [ current ] ++ next
+            List.reverse previous ++ [ current ] ++ next
 
 
 toScore : Question -> Int
