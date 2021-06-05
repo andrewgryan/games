@@ -47,7 +47,10 @@ viewQuestion question =
                         ]
                 ]
                 [ text statement
-                , div [] (List.map (viewAnswered answer) answers)
+                , div
+                    [ class "pt-1"
+                    ]
+                    (List.map (viewAnswered answer) answers)
                 ]
 
 
@@ -77,6 +80,8 @@ viewAnswered user option =
                     [ class "bg-green-400"
                     , class "text-white"
                     , class "font-bold"
+                    , class "pl-2"
+                    , class "py-1"
                     ]
                     [ text str ]
 
@@ -85,6 +90,8 @@ viewAnswered user option =
                     [ class "bg-red-400"
                     , class "text-white"
                     , class "font-bold"
+                    , class "pl-2"
+                    , class "py-1"
                     ]
                     [ text str ]
 
@@ -95,6 +102,8 @@ viewAnswered user option =
                 div
                     [ class "font-bold"
                     , class "text-green-500"
+                    , class "pl-2"
+                    , class "py-1"
                     ]
                     [ text str ]
 
@@ -102,5 +111,7 @@ viewAnswered user option =
                 div
                     [ class "bg-white"
                     , class "font-normal"
+                    , class "pl-2"
+                    , class "py-1"
                     ]
                     [ text str ]
