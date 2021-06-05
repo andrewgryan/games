@@ -16,6 +16,14 @@ let indexHandler = (req, res) => {
 app.get("/", indexHandler)
 app.get("/quiz", indexHandler)
 app.get("/room/*", indexHandler)
+app.get("/admin", indexHandler)
+app.get("/clear", (req, res) => {
+    console.log("Clear scoreboard requested")
+    leaderboard = []
+    res.json({
+        status: "scoreboard cleared"
+    })
+})
 
 
 let httpServer = http.createServer(app)

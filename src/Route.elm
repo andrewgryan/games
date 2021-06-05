@@ -15,6 +15,7 @@ import Url.Parser as Parser
 
 type Route
     = Index
+    | Admin
 
 
 fromUrl : Url -> Route
@@ -26,6 +27,7 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ map Index top
+        , map Admin (s "admin")
         ]
 
 
@@ -34,3 +36,6 @@ toString route =
     case route of
         Index ->
             "/"
+
+        Admin ->
+            "/admin"
