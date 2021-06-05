@@ -34,10 +34,30 @@ chooseMove player players =
         Done questionIndex ->
             if List.all (\p -> p == Done questionIndex) players then
                 Forward
-                -- TODO add catch up logic
+
+            else if questionIndex < highestIndex players then
+                Forward
 
             else
                 Wait
+
+
+highestIndex : List Player -> Int
+highestIndex players =
+    players
+        |> List.map toIndex
+        |> List.maximum
+        |> Maybe.withDefault 0
+
+
+toIndex : Player -> Int
+toIndex player =
+    case player of
+        Thinking n ->
+            n
+
+        Done n ->
+            n
 
 
 
