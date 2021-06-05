@@ -38,7 +38,6 @@ type Game
 type Turn
     = Started
     | LockedIn
-    | ReadyForNextTurn
 
 
 
@@ -401,10 +400,6 @@ update msg model =
                             in
                             ( { model
                                 | quizzes = quizzes
-                                , game =
-                                    updateTurn model.quiz
-                                        quizzes
-                                        (Dict.keys model.users)
                               }
                             , cmd
                             )
@@ -424,24 +419,6 @@ update msg model =
                             Debug.log "error" error
                     in
                     ( model, Cmd.none )
-
-
-updateTurn : Quiz -> Dict String Quiz -> List String -> Game
-updateTurn quiz quizzes sockets =
-    -- TODO add business logic here
-    let
-        allAnswered =
-            sockets
-                |> List.map (\s -> Dict.get s quizzes)
-                |> List.map (Maybe.map Quiz.getQuestion)
-                |> List.map (Maybe.map Quiz.answered)
-                |> List.all (Maybe.withDefault False)
-    in
-    if allAnswered then
-        Playing ReadyForNextTurn
-
-    else
-        Playing LockedIn
 
 
 
@@ -466,46 +443,48 @@ viewBody model =
             viewStartPage model.userDraft friends
 
         Playing turn ->
-            let
-                _ =
-                    Debug.log "turn" turn
+            case turn of
+                LockedIn ->
+                    viewWaitingForFriends
 
-                remaining =
-                    Quiz.getNext model.quiz
+                Started ->
+                    let
+                        remaining =
+                            Quiz.getNext model.quiz
 
-                question =
-                    Quiz.getQuestion model.quiz
-            in
-            div
-                [ class "flex"
-                , class "flex-col"
-                , class "h-screen"
-                ]
-                [ -- QUIZ
-                  Header.view
-                , div
-                    [ class "flex"
-                    , class "flex-row"
-                    , class "justify-between"
-                    ]
-                    [ div []
-                        [ viewUser model.user
-                        , viewFriends friends
+                        question =
+                            Quiz.getQuestion model.quiz
+                    in
+                    div
+                        [ class "flex"
+                        , class "flex-col"
+                        , class "h-screen"
                         ]
-                    , viewRemaining remaining
-                    ]
-                , div
-                    [ class "flex-grow"
-                    , class "flex"
-                    , class "justify-center"
-                    , class "items-center"
-                    ]
-                    [ Quiz.viewQuestion SelectAnswer question
-                    ]
-                , div [ Container.style ]
-                    [ viewNav turn model.quiz
-                    ]
-                ]
+                        [ -- QUIZ
+                          Header.view
+                        , div
+                            [ class "flex"
+                            , class "flex-row"
+                            , class "justify-between"
+                            ]
+                            [ div []
+                                [ viewUser model.user
+                                , viewFriends friends
+                                ]
+                            , viewRemaining remaining
+                            ]
+                        , div
+                            [ class "flex-grow"
+                            , class "flex"
+                            , class "justify-center"
+                            , class "items-center"
+                            ]
+                            [ Quiz.viewQuestion SelectAnswer question
+                            ]
+                        , div [ Container.style ]
+                            [ viewNav model.quiz
+                            ]
+                        ]
 
         ViewingResults ->
             div []
@@ -699,8 +678,8 @@ primaryButtonStyle =
             ]
 
 
-viewNav : Turn -> Quiz -> Html Msg
-viewNav turn quiz =
+viewNav : Quiz -> Html Msg
+viewNav quiz =
     let
         previous =
             Quiz.getPrevious quiz
@@ -718,15 +697,7 @@ viewNav turn quiz =
                 , class "pb-8"
                 ]
                 [ if Quiz.answered question then
-                    case turn of
-                        Started ->
-                            lockInButton LockAnswerIn
-
-                        LockedIn ->
-                            viewWaitingForFriends
-
-                        ReadyForNextTurn ->
-                            nextButton False
+                    lockInButton LockAnswerIn
 
                   else
                     text ""
@@ -822,11 +793,11 @@ viewWaitingForFriends =
             String.join " " <|
                 [ "bg-purple-500"
                 , "text-white"
-                , "flex-grow"
-                , "uppercase"
-                , "px-4"
-                , "py-6"
-                , "mx-2"
+                , "flex"
+                , "flex-row"
+                , "justify-center"
+                , "items-center"
+                , "h-screen"
                 ]
         ]
         [ div
@@ -840,7 +811,14 @@ viewWaitingForFriends =
                     ]
             ]
             [ Heroicons.sparkle
-            , div [ class "pl-2" ] [ text "Waiting for friends..." ]
+            , div
+                [ class <|
+                    String.join " " <|
+                        [ "pl-2"
+                        , "uppercase"
+                        ]
+                ]
+                [ text "Waiting for everyone..." ]
             ]
         ]
 
