@@ -379,29 +379,32 @@ update msg model =
                                 cmd =
                                     case channel of
                                         Public ->
-                                            case model.user of
-                                                Anonymous ->
-                                                    Cmd.none
-
-                                                LoggedIn name ->
-                                                    Encode.object
-                                                        [ ( "channel", Encode.string "private" )
-                                                        , ( "to", Encode.string socketID )
-                                                        , ( "type", Encode.string "quiz" )
-                                                        , ( "payload"
-                                                          , Encode.object
-                                                                [ ( "id", encodeSocket model.socket )
-                                                                , ( "quiz", Quiz.encodeQuiz model.quiz )
-                                                                ]
-                                                          )
+                                            -- REPLY WITH CURRENT QUIZ
+                                            Encode.object
+                                                [ ( "channel", Encode.string "private" )
+                                                , ( "to", Encode.string socketID )
+                                                , ( "type", Encode.string "quiz" )
+                                                , ( "payload"
+                                                  , Encode.object
+                                                        [ ( "id", encodeSocket model.socket )
+                                                        , ( "quiz", Quiz.encodeQuiz model.quiz )
                                                         ]
-                                                        |> Ports.sendMessage
+                                                  )
+                                                ]
+                                                |> Ports.sendMessage
 
                                         Private ->
                                             Cmd.none
+
+                                quizzes =
+                                    Dict.insert socketID quiz model.quizzes
                             in
                             ( { model
-                                | quizzes = Dict.insert socketID quiz model.quizzes
+                                | quizzes = quizzes
+                                , game =
+                                    updateTurn model.quiz
+                                        quizzes
+                                        (Dict.keys model.users)
                               }
                             , cmd
                             )
@@ -421,6 +424,24 @@ update msg model =
                             Debug.log "error" error
                     in
                     ( model, Cmd.none )
+
+
+updateTurn : Quiz -> Dict String Quiz -> List String -> Game
+updateTurn quiz quizzes sockets =
+    -- TODO add business logic here
+    let
+        allAnswered =
+            sockets
+                |> List.map (\s -> Dict.get s quizzes)
+                |> List.map (Maybe.map Quiz.getQuestion)
+                |> List.map (Maybe.map Quiz.answered)
+                |> List.all (Maybe.withDefault False)
+    in
+    if allAnswered then
+        Playing ReadyForNextTurn
+
+    else
+        Playing LockedIn
 
 
 
@@ -705,7 +726,7 @@ viewNav turn quiz =
                             viewWaitingForFriends
 
                         ReadyForNextTurn ->
-                            nextButton True
+                            nextButton False
 
                   else
                     text ""
@@ -825,13 +846,13 @@ viewWaitingForFriends =
 
 
 nextButton : Bool -> Html Msg
-nextButton notAnswered =
+nextButton isDisabled =
     button
         [ primaryButtonStyle
         , class "bg-green-500"
         , class "flex-grow"
         , onClick NextQuestion
-        , disabled notAnswered
+        , disabled isDisabled
         ]
         [ div
             [ class <|
