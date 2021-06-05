@@ -10,6 +10,11 @@ type Player
     | Done String
 
 
+type Move
+    = Forward
+    | Wait
+
+
 thinking : Player
 thinking =
     Thinking
@@ -20,14 +25,19 @@ done statement =
     Done statement
 
 
-allDone : Player -> List Player -> Bool
-allDone player players =
+chooseMove : Player -> List Player -> Move
+chooseMove player players =
     case player of
         Thinking ->
-            False
+            Wait
 
         Done statement ->
-            List.all (\p -> p == Done statement) players
+            if List.all (\p -> p == Done statement) players then
+                Forward
+                -- TODO add catch up logic
+
+            else
+                Wait
 
 
 

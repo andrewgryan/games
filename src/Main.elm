@@ -14,7 +14,7 @@ import Json.Decode as D
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
-import Player exposing (Player(..))
+import Player exposing (Move(..), Player(..))
 import Ports exposing (messageReceiver, sendMessage)
 import Quiz exposing (Answer, Question, Quiz)
 import Review
@@ -308,22 +308,22 @@ update msg model =
                         ]
                         |> Ports.sendMessage
             in
-            if Player.allDone newPlayer (Dict.values model.sockets) then
-                -- ALL PLAYERS DONE
-                ( { model
-                    | quiz = Quiz.nextQuestion model.quiz
-                    , player = Thinking
-                  }
-                , cmd
-                )
+            case Player.chooseMove newPlayer (Dict.values model.sockets) of
+                Forward ->
+                    ( { model
+                        | quiz = Quiz.nextQuestion model.quiz
+                        , player = Thinking
+                      }
+                    , cmd
+                    )
 
-            else
-                -- WAIT FOR OTHER PLAYERS
-                ( { model
-                    | player = newPlayer
-                  }
-                , cmd
-                )
+                Wait ->
+                    -- WAIT FOR OTHER PLAYERS
+                    ( { model
+                        | player = newPlayer
+                      }
+                    , cmd
+                    )
 
         -- PORT
         Recv value ->
@@ -417,23 +417,24 @@ update msg model =
                                 sockets =
                                     Dict.insert socketID player model.sockets
                             in
-                            if Player.allDone model.player (Dict.values sockets) then
-                                -- ALL DONE
-                                ( { model
-                                    | sockets = sockets
-                                    , quiz = Quiz.nextQuestion model.quiz
-                                    , player = Thinking
-                                  }
-                                , cmd
-                                )
+                            case Player.chooseMove model.player (Dict.values sockets) of
+                                Forward ->
+                                    -- ALL DONE
+                                    ( { model
+                                        | sockets = sockets
+                                        , quiz = Quiz.nextQuestion model.quiz
+                                        , player = Thinking
+                                      }
+                                    , cmd
+                                    )
 
-                            else
-                                -- WAIT FOR EVERYONE
-                                ( { model
-                                    | sockets = sockets
-                                  }
-                                , cmd
-                                )
+                                Wait ->
+                                    -- WAIT FOR EVERYONE
+                                    ( { model
+                                        | sockets = sockets
+                                      }
+                                    , cmd
+                                    )
 
                         ExitMsg str ->
                             ( { model
