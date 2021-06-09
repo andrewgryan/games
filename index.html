@@ -13,7 +13,10 @@
             import "./index.css"
 
             const app = Elm.Main.init({
-                node: document.getElementById("root")
+                node: document.getElementById("root"),
+                flags: {
+                    user: sessionStorage.getItem("user")
+                }
             })
 
             // Socket.io client
@@ -67,7 +70,12 @@
             app.ports.sendMessage.subscribe((message) => {
                 console.log("SEND TO SERVER", message)
                 let { type, payload, channel } = message
-                socket.emit(channel, message)
+                if (type === "sessionStorage") {
+                    const { key, value } = payload
+                    sessionStorage.setItem(key, value)
+                } else {
+                    socket.emit(channel, message)
+                }
             })
             socket.on("leaderboard", (leaderboard) => {
                 console.log("RECV FROM SERVER", leaderboard)

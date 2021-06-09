@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
 import Http
-import Json.Decode as D
+import Json.Decode as D exposing (Decoder)
 import Json.Encode as Encode
 import LeaderBoard exposing (LeaderBoard)
 import Outgoing
@@ -41,8 +41,19 @@ type Game
 -- INIT
 
 
-init : flags -> Url -> Key -> ( Model, Cmd msg )
-init _ url key =
+type alias Flags =
+    { user : User
+    }
+
+
+flagsDecoder : Decoder Flags
+flagsDecoder =
+    D.map Flags
+        (D.field "user" User.decoder)
+
+
+init : D.Value -> Url -> Key -> ( Model, Cmd msg )
+init value url key =
     let
         model =
             { key = key
@@ -67,10 +78,14 @@ init _ url key =
             , socket = Nothing
             , sockets = Dict.empty
             , users = Dict.empty
-            , quizzes = Dict.empty
             }
     in
-    ( model, Cmd.none )
+    case D.decodeValue flagsDecoder value of
+        Ok flags ->
+            ( { model | user = flags.user }, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
 
 
 
@@ -99,7 +114,6 @@ type alias Model =
     , socket : Maybe String
     , sockets : Dict String Player
     , users : Dict String String
-    , quizzes : Dict String Quiz
     }
 
 
@@ -276,13 +290,26 @@ update msg model =
 
                 cmd =
                     Cmd.batch
-                        [ Encode.object
+                        [ -- BROADCAST
+                          Encode.object
                             [ ( "channel", Encode.string "public" )
                             , ( "type", Encode.string "user" )
                             , ( "payload"
                               , Encode.object
                                     [ ( "id", encodeSocket model.socket )
                                     , ( "user", Encode.string model.userDraft )
+                                    ]
+                              )
+                            ]
+                            |> Ports.sendMessage
+
+                        -- SESSION STORAGE
+                        , Encode.object
+                            [ ( "type", Encode.string "sessionStorage" )
+                            , ( "payload"
+                              , Encode.object
+                                    [ ( "key", Encode.string "user" )
+                                    , ( "value", Encode.string model.userDraft )
                                     ]
                               )
                             ]
