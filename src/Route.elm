@@ -16,6 +16,8 @@ import Url.Parser as Parser
 type Route
     = Index
     | Admin
+    | WaitingRoom
+    | Quiz
 
 
 fromUrl : Url -> Route
@@ -28,6 +30,8 @@ parser =
     oneOf
         [ map Index top
         , map Admin (s "admin")
+        , map Quiz (s "quiz")
+        , map WaitingRoom (s "waiting")
         ]
 
 
@@ -39,3 +43,9 @@ toString route =
 
         Admin ->
             "/admin"
+
+        WaitingRoom ->
+            "/waiting"
+
+        Quiz ->
+            "/quiz"

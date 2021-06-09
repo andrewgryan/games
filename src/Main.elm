@@ -111,6 +111,7 @@ type Msg
     = -- USER
       UserDraftChanged String
       -- QUIZ
+    | GotUsername
     | StartQuiz
     | NextQuestion
     | PreviousQuestion
@@ -132,6 +133,7 @@ type PortMsg
     | ExitMsg String
     | EnterMsg String
     | JoinMsg Channel Socket.ID.ID
+    | StartMsg Channel Socket.ID.ID
     | UserMsg Channel String String
     | PlayerMsg Channel Player String
 
@@ -161,6 +163,11 @@ payloadDecoder label =
 
         "join" ->
             D.map2 JoinMsg
+                (D.field "channel" channelDecoder)
+                (D.field "payload" (D.map Socket.ID.ID (D.field "id" D.string)))
+
+        "start" ->
+            D.map2 StartMsg
                 (D.field "channel" channelDecoder)
                 (D.field "payload" (D.map Socket.ID.ID (D.field "id" D.string)))
 
@@ -262,27 +269,57 @@ update msg model =
             ( { model | userDraft = str }, Cmd.none )
 
         -- QUIZ
-        StartQuiz ->
+        GotUsername ->
             let
                 user =
                     User.loggedIn model.userDraft
 
                 cmd =
-                    Encode.object
-                        [ ( "channel", Encode.string "public" )
-                        , ( "type", Encode.string "user" )
-                        , ( "payload"
-                          , Encode.object
-                                [ ( "id", encodeSocket model.socket )
-                                , ( "user", Encode.string model.userDraft )
-                                ]
-                          )
+                    Cmd.batch
+                        [ Encode.object
+                            [ ( "channel", Encode.string "public" )
+                            , ( "type", Encode.string "user" )
+                            , ( "payload"
+                              , Encode.object
+                                    [ ( "id", encodeSocket model.socket )
+                                    , ( "user", Encode.string model.userDraft )
+                                    ]
+                              )
+                            ]
+                            |> Ports.sendMessage
+
+                        -- GO TO WAITING ROOM
+                        , Navigation.pushUrl model.key "/waiting"
                         ]
-                        |> Ports.sendMessage
+            in
+            ( { model
+                | user = user
+              }
+            , cmd
+            )
+
+        StartQuiz ->
+            let
+                cmd =
+                    Cmd.batch
+                        [ -- GO TO QUIZ
+                          Navigation.pushUrl model.key "/quiz"
+
+                        -- BROADCAST TO PLAYERS
+                        , Encode.object
+                            [ ( "channel", Encode.string "public" )
+                            , ( "type", Encode.string "start" )
+                            , ( "payload"
+                              , Encode.object
+                                    [ ( "id", encodeSocket model.socket )
+                                    ]
+                              )
+                            ]
+                            |> Ports.sendMessage
+                        ]
             in
             ( { model
                 | game = Playing
-                , user = user
               }
             , cmd
             )
@@ -400,6 +437,20 @@ update msg model =
                             , Cmd.none
                             )
 
+                        StartMsg channel socketID ->
+                            let
+                                cmd =
+                                    Cmd.batch
+                                        [ -- GO TO QUIZ
+                                          Navigation.pushUrl model.key "/quiz"
+                                        ]
+                            in
+                            ( { model
+                                | game = Playing
+                              }
+                            , cmd
+                            )
+
                         UserMsg channel str id ->
                             let
                                 cmd =
@@ -511,10 +562,89 @@ view model =
             , title = "The Quiet Ryan's"
             }
 
+        Quiz ->
+            { body = [ viewBody { model | game = Playing } ]
+            , title = "The Quiet Ryan's"
+            }
+
+        WaitingRoom ->
+            { body = [ viewWaitingRoom model ]
+            , title = "The Quiet Ryan's"
+            }
+
         Admin ->
             { body = [ viewAdmin model.adminText ]
             , title = "Admin"
             }
+
+
+viewWaitingRoom : Model -> Html Msg
+viewWaitingRoom model =
+    div
+        [ classes
+            [ "flex"
+            , "flex-col"
+            , "h-screen"
+            , "w-screen"
+            ]
+        ]
+        [ Header.view
+        , div
+            [ classes
+                [ "flex"
+                , "flex-col"
+                , "items-center"
+                , "justify-between"
+                , "flex-grow"
+                ]
+            ]
+            [ viewUser model.user
+            , div
+                [ classes
+                    [ "flex"
+                    , "flex-col"
+                    , "flex-grow"
+                    , "justify-center"
+                    , "items-center"
+                    , "space-y-2"
+                    , "w-full"
+                    ]
+                ]
+                [ h1
+                    [ classes
+                        [ "text-2xl"
+                        , "font-bold"
+                        , "text-teal-600"
+                        ]
+                    ]
+                    [ text "Other players" ]
+                , div []
+                    (List.map
+                        (\u ->
+                            div [] [ text u ]
+                        )
+                        (Dict.values model.users)
+                    )
+                , button
+                    [ classes
+                        [ "p-4"
+                        , "bg-teal-700"
+                        , "w-full"
+                        , "uppercase"
+                        , "font-bold"
+                        , "text-white"
+                        ]
+                    , onClick StartQuiz
+                    ]
+                    [ text "Everyone's here" ]
+                ]
+            ]
+        ]
+
+
+classes : List String -> Attribute Msg
+classes =
+    class << String.join " "
 
 
 viewAdmin : String -> Html Msg
@@ -755,7 +885,7 @@ viewStartPage draftName friends =
                     [ type_ "text"
                     , placeholder "Enter text"
                     , onInput UserDraftChanged
-                    , on "keydown" (ifIsEnter StartQuiz)
+                    , on "keydown" (ifIsEnter GotUsername)
                     , value draftName
                     , class <|
                         String.join " " <|
@@ -773,7 +903,7 @@ viewStartPage draftName friends =
                 ]
             , if draftName /= "" then
                 button
-                    [ onClick StartQuiz
+                    [ onClick GotUsername
                     , class <|
                         String.join " " <|
                             [ "w-full"
