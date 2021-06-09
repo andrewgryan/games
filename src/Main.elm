@@ -43,13 +43,15 @@ type Game
 
 type alias Flags =
     { user : User
+    , quiz : Quiz
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    D.map Flags
+    D.map2 Flags
         (D.field "user" User.decoder)
+        (D.field "quiz" Quiz.decoder)
 
 
 init : D.Value -> Url -> Key -> ( Model, Cmd msg )
@@ -82,7 +84,12 @@ init value url key =
     in
     case D.decodeValue flagsDecoder value of
         Ok flags ->
-            ( { model | user = flags.user }, Cmd.none )
+            ( { model
+                | user = flags.user
+                , quiz = flags.quiz
+              }
+            , Cmd.none
+            )
 
         Err _ ->
             ( model, Cmd.none )
@@ -127,8 +134,6 @@ type Msg
       -- QUIZ
     | GotUsername
     | StartQuiz
-    | NextQuestion
-    | PreviousQuestion
     | FinishQuiz
     | SelectAnswer Answer
     | LockAnswerIn
@@ -238,6 +243,20 @@ encodeSocket maybeSocket =
             Encode.null
 
 
+sessionStorage : String -> String -> Cmd Msg
+sessionStorage key value =
+    Encode.object
+        [ ( "type", Encode.string "sessionStorage" )
+        , ( "payload"
+          , Encode.object
+                [ ( "key", Encode.string key )
+                , ( "value", Encode.string value )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -304,16 +323,7 @@ update msg model =
                             |> Ports.sendMessage
 
                         -- SESSION STORAGE
-                        , Encode.object
-                            [ ( "type", Encode.string "sessionStorage" )
-                            , ( "payload"
-                              , Encode.object
-                                    [ ( "key", Encode.string "user" )
-                                    , ( "value", Encode.string model.userDraft )
-                                    ]
-                              )
-                            ]
-                            |> Ports.sendMessage
+                        , sessionStorage "user" (User.toString user)
 
                         -- GO TO WAITING ROOM
                         , Navigation.pushUrl model.key "/waiting"
@@ -368,20 +378,15 @@ update msg model =
             , cmd
             )
 
-        NextQuestion ->
-            let
-                cmd =
-                    Outgoing.answer model.user
-                        |> Outgoing.encode
-                        |> sendMessage
-            in
-            ( { model | quiz = Quiz.nextQuestion model.quiz }, cmd )
-
-        PreviousQuestion ->
-            ( { model | quiz = Quiz.previousQuestion model.quiz }, Cmd.none )
-
         SelectAnswer answer ->
-            ( { model | quiz = Quiz.selectAnswer answer model.quiz }, Cmd.none )
+            let
+                quiz =
+                    Quiz.selectAnswer answer model.quiz
+
+                cmd =
+                    sessionStorage "quiz" (Quiz.toString quiz)
+            in
+            ( { model | quiz = quiz }, cmd )
 
         LockAnswerIn ->
             let
@@ -412,12 +417,18 @@ update msg model =
 
                         questionIndex =
                             Quiz.getQuestionIndex quiz
+
+                        cmds =
+                            Cmd.batch
+                                [ cmd
+                                , sessionStorage "quiz" (Quiz.toString quiz)
+                                ]
                     in
                     ( { model
                         | quiz = quiz
                         , player = Thinking questionIndex
                       }
-                    , cmd
+                    , cmds
                     )
 
                 Wait ->
@@ -543,13 +554,19 @@ update msg model =
 
                                         questionIndex =
                                             Quiz.getQuestionIndex quiz
+
+                                        cmds =
+                                            Cmd.batch
+                                                [ cmd
+                                                , sessionStorage "quiz" (Quiz.toString quiz)
+                                                ]
                                     in
                                     ( { model
                                         | sockets = sockets
                                         , quiz = quiz
                                         , player = Thinking questionIndex
                                       }
-                                    , cmd
+                                    , cmds
                                     )
 
                                 Wait ->
@@ -1007,22 +1024,6 @@ plural n =
         "question"
 
 
-previousButton : Html Msg
-previousButton =
-    button
-        [ class <|
-            String.join " " <|
-                [ "bg-white"
-                , "border"
-                , "border-blue-500"
-                , "text-near-black"
-                , "flex-grow"
-                ]
-        , onClick PreviousQuestion
-        ]
-        [ text "Go back" ]
-
-
 lockInButton : Msg -> Html Msg
 lockInButton toMsg =
     button
@@ -1085,31 +1086,6 @@ viewWaitingForFriends =
                         ]
                 ]
                 [ text "Waiting for everyone..." ]
-            ]
-        ]
-
-
-nextButton : Bool -> Html Msg
-nextButton isDisabled =
-    button
-        [ primaryButtonStyle
-        , class "bg-green-500"
-        , class "flex-grow"
-        , onClick NextQuestion
-        , disabled isDisabled
-        ]
-        [ div
-            [ class <|
-                String.join " " <|
-                    [ "flex"
-                    , "flex-row"
-                    , "justify-center"
-                    , "items-center"
-                    , "uppercase"
-                    ]
-            ]
-            [ div [ class "px-2" ] [ text "To next question" ]
-            , Heroicons.arrowRight
             ]
         ]
 

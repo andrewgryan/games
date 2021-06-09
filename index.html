@@ -15,7 +15,8 @@
             const app = Elm.Main.init({
                 node: document.getElementById("root"),
                 flags: {
-                    user: sessionStorage.getItem("user")
+                    user: sessionStorage.getItem("user"),
+                    quiz: JSON.parse(sessionStorage.getItem("quiz"))
                 }
             })
 

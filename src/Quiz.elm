@@ -87,6 +87,11 @@ answerDecoder =
 -- ENCODE
 
 
+toString : Quiz -> String
+toString quiz =
+    Encode.encode 0 (encodeQuiz quiz)
+
+
 encodeQuiz : Quiz -> Encode.Value
 encodeQuiz quiz =
     case quiz of
