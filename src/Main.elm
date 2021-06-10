@@ -42,16 +42,18 @@ type Game
 
 
 type alias Flags =
-    { user : User
-    , quiz : Quiz
+    { user : Maybe User
+    , quiz : Maybe Quiz
+    , player : Maybe Player
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    D.map2 Flags
-        (D.field "user" User.decoder)
-        (D.field "quiz" Quiz.decoder)
+    D.map3 Flags
+        (D.field "user" (D.maybe User.decoder))
+        (D.field "quiz" (D.maybe Quiz.decoder))
+        (D.field "player" (D.maybe Player.decoder))
 
 
 init : D.Value -> Url -> Key -> ( Model, Cmd msg )
@@ -85,8 +87,9 @@ init value url key =
     case D.decodeValue flagsDecoder value of
         Ok flags ->
             ( { model
-                | user = flags.user
-                , quiz = flags.quiz
+                | user = Maybe.withDefault model.user flags.user
+                , quiz = Maybe.withDefault model.quiz flags.quiz
+                , player = Maybe.withDefault model.player flags.player
               }
             , Cmd.none
             )
@@ -160,10 +163,6 @@ type PortMsg
 type Channel
     = Public
     | Private
-
-
-
--- UPDATE
 
 
 portDecoder : D.Decoder PortMsg
@@ -257,6 +256,94 @@ sessionStorage key value =
         |> Ports.sendMessage
 
 
+
+-- BROADCAST
+
+
+type alias Socket =
+    Maybe String
+
+
+broadcastPublicJoin : String -> Cmd Msg
+broadcastPublicJoin str =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "join" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", Encode.string str )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPublicUser : Socket -> String -> Cmd Msg
+broadcastPublicUser socketId userName =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "user" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socketId )
+                , ( "user", Encode.string userName )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPublicPlayer : Socket -> Player -> Cmd Msg
+broadcastPublicPlayer socketId player =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "player" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socketId )
+                , ( "player", Player.encode player )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPrivatePlayer : String -> Socket -> Player -> Cmd Msg
+broadcastPrivatePlayer toSocketID socket player =
+    Encode.object
+        [ ( "channel", Encode.string "private" )
+        , ( "to", Encode.string toSocketID )
+        , ( "type", Encode.string "player" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socket )
+                , ( "player", Player.encode player )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPrivateUser : String -> Socket -> String -> Cmd Msg
+broadcastPrivateUser toSocketID socket userName =
+    Encode.object
+        [ ( "channel", Encode.string "private" )
+        , ( "to", Encode.string toSocketID )
+        , ( "type", Encode.string "user" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socket )
+                , ( "user", Encode.string userName )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+
+-- UPDATE
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -310,17 +397,7 @@ update msg model =
                 cmd =
                     Cmd.batch
                         [ -- BROADCAST
-                          Encode.object
-                            [ ( "channel", Encode.string "public" )
-                            , ( "type", Encode.string "user" )
-                            , ( "payload"
-                              , Encode.object
-                                    [ ( "id", encodeSocket model.socket )
-                                    , ( "user", Encode.string model.userDraft )
-                                    ]
-                              )
-                            ]
-                            |> Ports.sendMessage
+                          broadcastPublicUser model.socket model.userDraft
 
                         -- SESSION STORAGE
                         , sessionStorage "user" (User.toString user)
@@ -397,17 +474,7 @@ update msg model =
                         )
 
                 cmd =
-                    Encode.object
-                        [ ( "channel", Encode.string "public" )
-                        , ( "type", Encode.string "player" )
-                        , ( "payload"
-                          , Encode.object
-                                [ ( "id", encodeSocket model.socket )
-                                , ( "player", Player.encode newPlayer )
-                                ]
-                          )
-                        ]
-                        |> Ports.sendMessage
+                    broadcastPublicPlayer model.socket newPlayer
             in
             case Player.chooseMove newPlayer (Dict.values model.sockets) of
                 Forward ->
@@ -418,25 +485,36 @@ update msg model =
                         questionIndex =
                             Quiz.getQuestionIndex quiz
 
+                        player =
+                            Thinking questionIndex
+
                         cmds =
                             Cmd.batch
                                 [ cmd
                                 , sessionStorage "quiz" (Quiz.toString quiz)
+                                , sessionStorage "player" (Player.toString player)
                                 ]
                     in
                     ( { model
                         | quiz = quiz
-                        , player = Thinking questionIndex
+                        , player = player
                       }
                     , cmds
                     )
 
                 Wait ->
                     -- WAIT FOR OTHER PLAYERS
+                    let
+                        cmds =
+                            Cmd.batch
+                                [ cmd
+                                , sessionStorage "player" (Player.toString newPlayer)
+                                ]
+                    in
                     ( { model
                         | player = newPlayer
                       }
-                    , cmd
+                    , cmds
                     )
 
         -- PORT
@@ -451,18 +529,22 @@ update msg model =
                         EnterMsg str ->
                             let
                                 cmd =
-                                    Encode.object
-                                        [ ( "channel", Encode.string "public" )
-                                        , ( "type", Encode.string "join" )
-                                        , ( "payload"
-                                          , Encode.object
-                                                [ ( "id", Encode.string str )
-                                                ]
-                                          )
-                                        ]
-                                        |> Ports.sendMessage
+                                    broadcastPublicJoin str
+
+                                socket =
+                                    Just str
                             in
-                            ( { model | socket = Just str }, cmd )
+                            case model.user of
+                                Anonymous ->
+                                    ( { model | socket = socket }, cmd )
+
+                                LoggedIn userName ->
+                                    ( { model | socket = socket }
+                                    , Cmd.batch
+                                        [ cmd
+                                        , broadcastPublicUser socket userName
+                                        ]
+                                    )
 
                         JoinMsg channel socketID ->
                             let
@@ -499,18 +581,14 @@ update msg model =
                                                     Cmd.none
 
                                                 LoggedIn name ->
-                                                    Encode.object
-                                                        [ ( "channel", Encode.string "private" )
-                                                        , ( "to", Encode.string id )
-                                                        , ( "type", Encode.string "user" )
-                                                        , ( "payload"
-                                                          , Encode.object
-                                                                [ ( "id", encodeSocket model.socket )
-                                                                , ( "user", Encode.string name )
-                                                                ]
-                                                          )
+                                                    Cmd.batch
+                                                        [ broadcastPrivateUser id
+                                                            model.socket
+                                                            name
+                                                        , broadcastPrivatePlayer id
+                                                            model.socket
+                                                            model.player
                                                         ]
-                                                        |> Ports.sendMessage
 
                                         Private ->
                                             Cmd.none
@@ -526,18 +604,9 @@ update msg model =
                                 cmd =
                                     case channel of
                                         Public ->
-                                            Encode.object
-                                                [ ( "channel", Encode.string "private" )
-                                                , ( "to", Encode.string socketID )
-                                                , ( "type", Encode.string "player" )
-                                                , ( "payload"
-                                                  , Encode.object
-                                                        [ ( "id", encodeSocket model.socket )
-                                                        , ( "player", Player.encode model.player )
-                                                        ]
-                                                  )
-                                                ]
-                                                |> Ports.sendMessage
+                                            broadcastPrivatePlayer socketID
+                                                model.socket
+                                                model.player
 
                                         Private ->
                                             Cmd.none
@@ -555,16 +624,20 @@ update msg model =
                                         questionIndex =
                                             Quiz.getQuestionIndex quiz
 
+                                        nextPlayer =
+                                            Thinking questionIndex
+
                                         cmds =
                                             Cmd.batch
                                                 [ cmd
                                                 , sessionStorage "quiz" (Quiz.toString quiz)
+                                                , sessionStorage "player" (Player.toString nextPlayer)
                                                 ]
                                     in
                                     ( { model
                                         | sockets = sockets
                                         , quiz = quiz
-                                        , player = Thinking questionIndex
+                                        , player = nextPlayer
                                       }
                                     , cmds
                                     )
