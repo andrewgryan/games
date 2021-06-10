@@ -18,6 +18,7 @@ type Route
     | Admin
     | WaitingRoom
     | Quiz
+    | ScoreBoard
 
 
 fromUrl : Url -> Route
@@ -31,6 +32,7 @@ parser =
         [ map Index top
         , map Admin (s "admin")
         , map Quiz (s "quiz")
+        , map ScoreBoard (s "scoreboard")
         , map WaitingRoom (s "waiting")
         ]
 
@@ -49,3 +51,6 @@ toString route =
 
         Quiz ->
             "/quiz"
+
+        ScoreBoard ->
+            "/scoreboard"

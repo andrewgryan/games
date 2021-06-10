@@ -34,7 +34,6 @@ import User exposing (User(..))
 type Game
     = WaitingToPlay
     | Playing
-    | ViewingResults
 
 
 
@@ -444,13 +443,17 @@ update msg model =
                     Score.fromInt model.user (Quiz.tally model.quiz)
 
                 cmd =
-                    Outgoing.save score
-                        |> Outgoing.encode
-                        |> sendMessage
+                    Cmd.batch
+                        [ Outgoing.save score
+                            |> Outgoing.encode
+                            |> sendMessage
+
+                        -- GO TO SCOREBOARD
+                        , Navigation.pushUrl model.key "/scoreboard"
+                        ]
             in
             ( { model
-                | game = ViewingResults
-                , leaderBoard = LeaderBoard.empty
+                | leaderBoard = LeaderBoard.empty
               }
             , cmd
             )
@@ -689,6 +692,11 @@ view model =
             , title = "The Quiet Ryan's"
             }
 
+        ScoreBoard ->
+            { body = [ viewScoreBoard model ]
+            , title = "The Quiet Ryan's"
+            }
+
         Admin ->
             { body = [ viewAdmin model.adminText ]
             , title = "Admin"
@@ -851,13 +859,15 @@ viewBody model =
                             ]
                         ]
 
-        ViewingResults ->
-            div []
-                [ Header.view
-                , viewError model.errorMessage
-                , LeaderBoard.view model.leaderBoard
-                , Review.view model.quiz
-                ]
+
+viewScoreBoard : Model -> Html Msg
+viewScoreBoard model =
+    div []
+        [ Header.view
+        , viewError model.errorMessage
+        , LeaderBoard.view model.leaderBoard
+        , Review.view model.quiz
+        ]
 
 
 viewRooms : (Int -> Msg) -> Html Msg
