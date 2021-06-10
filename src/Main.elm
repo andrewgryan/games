@@ -162,10 +162,6 @@ type Channel
     | Private
 
 
-
--- UPDATE
-
-
 portDecoder : D.Decoder PortMsg
 portDecoder =
     D.oneOf
@@ -257,6 +253,43 @@ sessionStorage key value =
         |> Ports.sendMessage
 
 
+
+-- BROADCAST
+
+
+broadcastPublicJoin : String -> Cmd Msg
+broadcastPublicJoin str =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "join" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", Encode.string str )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPublicUser : Maybe String -> String -> Cmd Msg
+broadcastPublicUser socketId userName =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "user" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socketId )
+                , ( "user", Encode.string userName )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+
+-- UPDATE
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -310,17 +343,7 @@ update msg model =
                 cmd =
                     Cmd.batch
                         [ -- BROADCAST
-                          Encode.object
-                            [ ( "channel", Encode.string "public" )
-                            , ( "type", Encode.string "user" )
-                            , ( "payload"
-                              , Encode.object
-                                    [ ( "id", encodeSocket model.socket )
-                                    , ( "user", Encode.string model.userDraft )
-                                    ]
-                              )
-                            ]
-                            |> Ports.sendMessage
+                          broadcastPublicUser model.socket model.userDraft
 
                         -- SESSION STORAGE
                         , sessionStorage "user" (User.toString user)
@@ -451,18 +474,22 @@ update msg model =
                         EnterMsg str ->
                             let
                                 cmd =
-                                    Encode.object
-                                        [ ( "channel", Encode.string "public" )
-                                        , ( "type", Encode.string "join" )
-                                        , ( "payload"
-                                          , Encode.object
-                                                [ ( "id", Encode.string str )
-                                                ]
-                                          )
-                                        ]
-                                        |> Ports.sendMessage
+                                    broadcastPublicJoin str
+
+                                socket =
+                                    Just str
                             in
-                            ( { model | socket = Just str }, cmd )
+                            case model.user of
+                                Anonymous ->
+                                    ( { model | socket = socket }, cmd )
+
+                                LoggedIn userName ->
+                                    ( { model | socket = socket }
+                                    , Cmd.batch
+                                        [ cmd
+                                        , broadcastPublicUser socket userName
+                                        ]
+                                    )
 
                         JoinMsg channel socketID ->
                             let
