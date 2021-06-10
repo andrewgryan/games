@@ -44,15 +44,17 @@ type alias Flags =
     { user : Maybe User
     , quiz : Maybe Quiz
     , player : Maybe Player
+    , leaderBoard : Maybe LeaderBoard
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    D.map3 Flags
+    D.map4 Flags
         (D.field "user" (D.maybe User.decoder))
         (D.field "quiz" (D.maybe Quiz.decoder))
         (D.field "player" (D.maybe Player.decoder))
+        (D.field "leaderBoard" (D.maybe LeaderBoard.decoder))
 
 
 init : D.Value -> Url -> Key -> ( Model, Cmd msg )
@@ -89,6 +91,7 @@ init value url key =
                 | user = Maybe.withDefault model.user flags.user
                 , quiz = Maybe.withDefault model.quiz flags.quiz
                 , player = Maybe.withDefault model.player flags.player
+                , leaderBoard = Maybe.withDefault model.leaderBoard flags.leaderBoard
               }
             , Cmd.none
             )
@@ -527,7 +530,11 @@ update msg model =
                     case portMsg of
                         -- LEADERBOARD
                         LeaderBoardMsg leaderBoard ->
-                            ( { model | leaderBoard = leaderBoard }, Cmd.none )
+                            let
+                                cmd =
+                                    sessionStorage "leaderBoard" (LeaderBoard.toString leaderBoard)
+                            in
+                            ( { model | leaderBoard = leaderBoard }, cmd )
 
                         EnterMsg str ->
                             let
