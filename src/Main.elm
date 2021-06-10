@@ -257,6 +257,10 @@ sessionStorage key value =
 -- BROADCAST
 
 
+type alias Socket =
+    Maybe String
+
+
 broadcastPublicJoin : String -> Cmd Msg
 broadcastPublicJoin str =
     Encode.object
@@ -271,7 +275,7 @@ broadcastPublicJoin str =
         |> Ports.sendMessage
 
 
-broadcastPublicUser : Maybe String -> String -> Cmd Msg
+broadcastPublicUser : Socket -> String -> Cmd Msg
 broadcastPublicUser socketId userName =
     Encode.object
         [ ( "channel", Encode.string "public" )
@@ -279,6 +283,53 @@ broadcastPublicUser socketId userName =
         , ( "payload"
           , Encode.object
                 [ ( "id", encodeSocket socketId )
+                , ( "user", Encode.string userName )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPublicPlayer : Socket -> Player -> Cmd Msg
+broadcastPublicPlayer socketId player =
+    Encode.object
+        [ ( "channel", Encode.string "public" )
+        , ( "type", Encode.string "player" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socketId )
+                , ( "player", Player.encode player )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPrivatePlayer : String -> Socket -> Player -> Cmd Msg
+broadcastPrivatePlayer toSocketID socket player =
+    Encode.object
+        [ ( "channel", Encode.string "private" )
+        , ( "to", Encode.string toSocketID )
+        , ( "type", Encode.string "player" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socket )
+                , ( "player", Player.encode player )
+                ]
+          )
+        ]
+        |> Ports.sendMessage
+
+
+broadcastPrivateUser : String -> Socket -> String -> Cmd Msg
+broadcastPrivateUser toSocketID socket userName =
+    Encode.object
+        [ ( "channel", Encode.string "private" )
+        , ( "to", Encode.string toSocketID )
+        , ( "type", Encode.string "user" )
+        , ( "payload"
+          , Encode.object
+                [ ( "id", encodeSocket socket )
                 , ( "user", Encode.string userName )
                 ]
           )
@@ -420,17 +471,7 @@ update msg model =
                         )
 
                 cmd =
-                    Encode.object
-                        [ ( "channel", Encode.string "public" )
-                        , ( "type", Encode.string "player" )
-                        , ( "payload"
-                          , Encode.object
-                                [ ( "id", encodeSocket model.socket )
-                                , ( "player", Player.encode newPlayer )
-                                ]
-                          )
-                        ]
-                        |> Ports.sendMessage
+                    broadcastPublicPlayer model.socket newPlayer
             in
             case Player.chooseMove newPlayer (Dict.values model.sockets) of
                 Forward ->
@@ -526,18 +567,14 @@ update msg model =
                                                     Cmd.none
 
                                                 LoggedIn name ->
-                                                    Encode.object
-                                                        [ ( "channel", Encode.string "private" )
-                                                        , ( "to", Encode.string id )
-                                                        , ( "type", Encode.string "user" )
-                                                        , ( "payload"
-                                                          , Encode.object
-                                                                [ ( "id", encodeSocket model.socket )
-                                                                , ( "user", Encode.string name )
-                                                                ]
-                                                          )
+                                                    Cmd.batch
+                                                        [ broadcastPrivateUser id
+                                                            model.socket
+                                                            name
+                                                        , broadcastPrivatePlayer id
+                                                            model.socket
+                                                            model.player
                                                         ]
-                                                        |> Ports.sendMessage
 
                                         Private ->
                                             Cmd.none
@@ -553,18 +590,9 @@ update msg model =
                                 cmd =
                                     case channel of
                                         Public ->
-                                            Encode.object
-                                                [ ( "channel", Encode.string "private" )
-                                                , ( "to", Encode.string socketID )
-                                                , ( "type", Encode.string "player" )
-                                                , ( "payload"
-                                                  , Encode.object
-                                                        [ ( "id", encodeSocket model.socket )
-                                                        , ( "player", Player.encode model.player )
-                                                        ]
-                                                  )
-                                                ]
-                                                |> Ports.sendMessage
+                                            broadcastPrivatePlayer socketID
+                                                model.socket
+                                                model.player
 
                                         Private ->
                                             Cmd.none
