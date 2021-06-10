@@ -28,15 +28,6 @@ import User exposing (User(..))
 
 
 
--- QUIZ
-
-
-type Game
-    = WaitingToPlay
-    | Playing
-
-
-
 -- INIT
 
 
@@ -73,7 +64,6 @@ init value url key =
             , route = Route.fromUrl url
 
             -- QUIZ
-            , game = WaitingToPlay
             , leaderBoard =
                 LeaderBoard.empty
             , quiz = Quiz.second
@@ -109,7 +99,6 @@ type alias Model =
     , userDraft : String
     , errorMessage : Maybe D.Error
     , quiz : Quiz
-    , game : Game
     , player : Player
     , leaderBoard : LeaderBoard
 
@@ -434,11 +423,7 @@ update msg model =
                             |> Ports.sendMessage
                         ]
             in
-            ( { model
-                | game = Playing
-              }
-            , cmd
-            )
+            ( model, cmd )
 
         FinishQuiz ->
             let
@@ -575,11 +560,7 @@ update msg model =
                                           Navigation.pushUrl model.key "/quiz"
                                         ]
                             in
-                            ( { model
-                                | game = Playing
-                              }
-                            , cmd
-                            )
+                            ( model, cmd )
 
                         UserMsg channel str id ->
                             let
@@ -685,12 +666,12 @@ view : Model -> Browser.Document Msg
 view model =
     case model.route of
         Index ->
-            { body = [ viewBody model ]
+            { body = [ viewIndex model ]
             , title = "The Quiet Ryan's"
             }
 
         Quiz ->
-            { body = [ viewBody { model | game = Playing } ]
+            { body = [ viewBody model ]
             , title = "The Quiet Ryan's"
             }
 
@@ -807,64 +788,64 @@ viewAdmin str =
         ]
 
 
+viewIndex : Model -> Html Msg
+viewIndex model =
+    viewStartPage model.userDraft
+
+
 viewBody : Model -> Html Msg
 viewBody model =
     let
         friends =
             Dict.values model.users |> List.sort
     in
-    case model.game of
-        WaitingToPlay ->
-            viewStartPage model.userDraft friends
+    case model.player of
+        Done _ ->
+            viewWaitingForFriends
 
-        Playing ->
-            case model.player of
-                Done _ ->
-                    viewWaitingForFriends
+        Thinking _ ->
+            let
+                remaining =
+                    Quiz.getNext model.quiz
 
-                Thinking _ ->
-                    let
-                        remaining =
-                            Quiz.getNext model.quiz
-
-                        question =
-                            Quiz.getQuestion model.quiz
-                    in
-                    div
+                question =
+                    Quiz.getQuestion model.quiz
+            in
+            div
+                [ class "flex"
+                , class "flex-col"
+                , class "h-screen"
+                ]
+                [ -- QUIZ
+                  Header.view
+                , div
+                    [ class "flex"
+                    , class "flex-row"
+                    , class "justify-between"
+                    ]
+                    [ div []
+                        [ viewUser model.user
+                        , viewFriends friends
+                        ]
+                    , viewRemaining remaining
+                    ]
+                , div
+                    [ class "flex"
+                    , class "flex-col"
+                    , class "justify-center"
+                    , class "flex-grow"
+                    , class "space-y-4"
+                    ]
+                    [ div
                         [ class "flex"
-                        , class "flex-col"
-                        , class "h-screen"
+                        , class "justify-center"
+                        , class "items-center"
                         ]
-                        [ -- QUIZ
-                          Header.view
-                        , div
-                            [ class "flex"
-                            , class "flex-row"
-                            , class "justify-between"
-                            ]
-                            [ div []
-                                [ viewUser model.user
-                                , viewFriends friends
-                                ]
-                            , viewRemaining remaining
-                            ]
-                        , div
-                            [ class "flex"
-                            , class "flex-col"
-                            , class "justify-center"
-                            , class "flex-grow"
-                            , class "space-y-4"
-                            ]
-                            [ div
-                                [ class "flex"
-                                , class "justify-center"
-                                , class "items-center"
-                                ]
-                                [ Quiz.viewQuestion SelectAnswer question
-                                ]
-                            , viewNav model.quiz
-                            ]
+                        [ Quiz.viewQuestion SelectAnswer question
                         ]
+                    , viewNav model.quiz
+                    ]
+                ]
 
 
 viewScoreBoard : Model -> Html Msg
@@ -981,8 +962,8 @@ viewFriends friends =
         ]
 
 
-viewStartPage : String -> List String -> Html Msg
-viewStartPage draftName friends =
+viewStartPage : String -> Html Msg
+viewStartPage draftName =
     div
         [ class "w-screen"
         , class "h-screen"
