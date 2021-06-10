@@ -42,16 +42,18 @@ type Game
 
 
 type alias Flags =
-    { user : User
-    , quiz : Quiz
+    { user : Maybe User
+    , quiz : Maybe Quiz
+    , player : Maybe Player
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    D.map2 Flags
-        (D.field "user" User.decoder)
-        (D.field "quiz" Quiz.decoder)
+    D.map3 Flags
+        (D.field "user" (D.maybe User.decoder))
+        (D.field "quiz" (D.maybe Quiz.decoder))
+        (D.field "player" (D.maybe Player.decoder))
 
 
 init : D.Value -> Url -> Key -> ( Model, Cmd msg )
@@ -85,8 +87,9 @@ init value url key =
     case D.decodeValue flagsDecoder value of
         Ok flags ->
             ( { model
-                | user = flags.user
-                , quiz = flags.quiz
+                | user = Maybe.withDefault model.user flags.user
+                , quiz = Maybe.withDefault model.quiz flags.quiz
+                , player = Maybe.withDefault model.player flags.player
               }
             , Cmd.none
             )
@@ -482,25 +485,36 @@ update msg model =
                         questionIndex =
                             Quiz.getQuestionIndex quiz
 
+                        player =
+                            Thinking questionIndex
+
                         cmds =
                             Cmd.batch
                                 [ cmd
                                 , sessionStorage "quiz" (Quiz.toString quiz)
+                                , sessionStorage "player" (Player.toString player)
                                 ]
                     in
                     ( { model
                         | quiz = quiz
-                        , player = Thinking questionIndex
+                        , player = player
                       }
                     , cmds
                     )
 
                 Wait ->
                     -- WAIT FOR OTHER PLAYERS
+                    let
+                        cmds =
+                            Cmd.batch
+                                [ cmd
+                                , sessionStorage "player" (Player.toString newPlayer)
+                                ]
+                    in
                     ( { model
                         | player = newPlayer
                       }
-                    , cmd
+                    , cmds
                     )
 
         -- PORT
@@ -610,16 +624,20 @@ update msg model =
                                         questionIndex =
                                             Quiz.getQuestionIndex quiz
 
+                                        nextPlayer =
+                                            Thinking questionIndex
+
                                         cmds =
                                             Cmd.batch
                                                 [ cmd
                                                 , sessionStorage "quiz" (Quiz.toString quiz)
+                                                , sessionStorage "player" (Player.toString nextPlayer)
                                                 ]
                                     in
                                     ( { model
                                         | sockets = sockets
                                         , quiz = quiz
-                                        , player = Thinking questionIndex
+                                        , player = nextPlayer
                                       }
                                     , cmds
                                     )

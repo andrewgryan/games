@@ -64,6 +64,11 @@ toIndex player =
 -- ENCODE
 
 
+toString : Player -> String
+toString player =
+    Encode.encode 0 (encode player)
+
+
 encode : Player -> Encode.Value
 encode player =
     case player of
