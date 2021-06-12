@@ -693,65 +693,79 @@ view model =
 
 viewWaitingRoom : Model -> Html Msg
 viewWaitingRoom model =
+    let
+        players =
+            Dict.values model.users
+    in
+    case players of
+        [] ->
+            viewWaitingForFriends "Waiting for people to join..."
+
+        _ ->
+            div
+                [ classes
+                    [ "flex"
+                    , "flex-col"
+                    , "h-screen"
+                    , "w-screen"
+                    ]
+                ]
+                [ Header.view
+                , div
+                    [ classes
+                        [ "flex"
+                        , "flex-col"
+                        , "items-center"
+                        , "justify-between"
+                        , "flex-grow"
+                        ]
+                    ]
+                    [ viewUser model.user
+                    , viewPlayers players
+                    ]
+                ]
+
+
+viewPlayers : List String -> Html Msg
+viewPlayers players =
     div
         [ classes
             [ "flex"
             , "flex-col"
-            , "h-screen"
-            , "w-screen"
+            , "flex-grow"
+            , "justify-center"
+            , "items-center"
+            , "space-y-2"
+            , "w-full"
             ]
         ]
-        [ Header.view
-        , div
+        [ h1
             [ classes
-                [ "flex"
-                , "flex-col"
-                , "items-center"
-                , "justify-between"
-                , "flex-grow"
+                [ "text-2xl"
+                , "font-bold"
+                , "text-teal-600"
                 ]
             ]
-            [ viewUser model.user
-            , div
-                [ classes
-                    [ "flex"
-                    , "flex-col"
-                    , "flex-grow"
-                    , "justify-center"
-                    , "items-center"
-                    , "space-y-2"
-                    , "w-full"
-                    ]
+            [ text "Other players" ]
+        , div []
+            (List.map
+                (\u ->
+                    div [] [ text u ]
+                )
+                players
+            )
+        , button
+            [ classes
+                [ "p-4"
+                , "bg-teal-700"
+                , "w-full"
+                , "uppercase"
+                , "font-bold"
+                , "text-white"
                 ]
-                [ h1
-                    [ classes
-                        [ "text-2xl"
-                        , "font-bold"
-                        , "text-teal-600"
-                        ]
-                    ]
-                    [ text "Other players" ]
-                , div []
-                    (List.map
-                        (\u ->
-                            div [] [ text u ]
-                        )
-                        (Dict.values model.users)
-                    )
-                , button
-                    [ classes
-                        [ "p-4"
-                        , "bg-teal-700"
-                        , "w-full"
-                        , "uppercase"
-                        , "font-bold"
-                        , "text-white"
-                        ]
-                    , onClick StartQuiz
-                    ]
-                    [ text "Everyone's here" ]
-                ]
+            , onClick StartQuiz
             ]
+            [ text "Everyone's here" ]
         ]
 
 
@@ -801,7 +815,7 @@ viewBody model =
     in
     case model.player of
         Done _ ->
-            viewWaitingForFriends
+            viewWaitingForFriends "Waiting for everyone..."
 
         Thinking _ ->
             let
@@ -1124,8 +1138,8 @@ lockInButton toMsg =
         ]
 
 
-viewWaitingForFriends : Html Msg
-viewWaitingForFriends =
+viewWaitingForFriends : String -> Html Msg
+viewWaitingForFriends messageText =
     div
         [ class <|
             String.join " " <|
@@ -1156,7 +1170,7 @@ viewWaitingForFriends =
                         , "uppercase"
                         ]
                 ]
-                [ text "Waiting for everyone..." ]
+                [ text messageText ]
             ]
         ]
 
